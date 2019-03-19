@@ -1,0 +1,71 @@
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  labels:
+    app: _PREFIX_nexus3
+  name: _PREFIX_nexus3
+spec:
+  progressDeadlineSeconds: 600
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: _PREFIX_nexus3
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: _PREFIX_nexus3
+    spec:
+      containers:
+      - image: sonatype/nexus3:latest
+        imagePullPolicy: Always
+        name: nexus3
+        resources: {}
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      terminationGracePeriodSeconds: 30
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: _PREFIX_nexus3
+  name: _PREFIX_nexus3
+spec:
+  externalTrafficPolicy: Cluster
+  ports:
+  - port: 8081
+    protocol: TCP
+    targetPort: 8081
+  selector:
+    app: _PREFIX_nexus3
+  sessionAffinity: None
+  type: LoadBalancer
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: _PREFIX_nexus3
+  name: _PREFIX_nexus-registry
+spec:
+  externalTrafficPolicy: Cluster
+  ports:
+  - port: 5000
+    protocol: TCP
+    targetPort: 5000
+  selector:
+    app: _PREFIX_nexus3
+  sessionAffinity: None
+  type: LoadBalancer

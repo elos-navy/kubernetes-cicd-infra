@@ -1,0 +1,72 @@
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: _PREFIX_sonarqube
+  labels:
+    app: _PREFIX_sonarqube
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  labels:
+    app: _PREFIX_sonarqube
+  name: _PREFIX_sonarqube
+spec:
+  progressDeadlineSeconds: 600
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: _PREFIX_sonarqube
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: _PREFIX_sonarqube
+    spec:
+      containers:
+      - image: wkulhanek/sonarqube:6.7.4
+        imagePullPolicy: IfNotPresent
+        name: sonarqube
+        resources: {}
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+          - mountPath: /opt/sonarqube/data
+            name: sonarqube-data
+      volumes:
+        - name: sonarqube-data
+          persistentVolumeClaim:
+            claimName: _PREFIX_sonarqube
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      terminationGracePeriodSeconds: 30
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: _PREFIX_sonarqube
+  name: _PREFIX_sonarqube
+spec:
+  ports:
+  - port: 9000
+    protocol: TCP
+    targetPort: 9000
+  selector:
+    app: _PREFIX_sonarqube
+  sessionAffinity: None
+  type: LoadBalancer
