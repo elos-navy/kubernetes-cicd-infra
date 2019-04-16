@@ -1,0 +1,99 @@
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: _PREFIX_jenkins-pv-claim
+  labels:
+    app: _PREFIX_jenkins
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  labels:
+    app: _PREFIX_jenkins
+  name: _PREFIX_jenkins
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: _PREFIX_jenkins
+    spec:
+      containers:
+      - name: jenkins
+        image: openshift/jenkins-2-centos7:latest
+        ports:
+        - containerPort: 8080
+        - containerPort: 50000
+        readinessProbe:
+          httpGet:
+            path: /login
+            port: 8080
+          periodSeconds: 10
+          timeoutSeconds: 5
+          successThreshold: 2
+          failureThreshold: 5
+        env:
+        - name: JAVA_OPTS
+          value: "-Djenkins.install.runSetupWizard=false"
+        - name: JENKINS_PASSWORD
+          value: "xxxxxx"
+        volumeMounts:
+        - mountPath: /var/lib/jenkins
+          name: jenkins-data
+      initContainers:
+      - name: install-plugins
+        image: openshift/jenkins-2-centos7:latest
+        command:
+          - /bin/sh
+          - -c
+          - install-plugins.sh < /mnt/plugins.txt
+        volumeMounts:
+        - mountPath: /var/lib/jenkins
+          name: jenkins-data
+        - mountPath: /mnt
+          name: jenkins-plugins
+      volumes:
+      - name: jenkins-data
+        persistentVolumeClaim:
+          claimName: jenkins-pv-claim
+      - name: jenkins-plugins
+        configMap:
+          name: _PREFIX_jenkins-plugins
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: _PREFIX_jenkins
+  name: _PREFIX_jenkins
+spec:
+  externalTrafficPolicy: Cluster
+  ports:
+  - port: 8080
+    protocol: TCP
+    targetPort: 8080
+  selector:
+    app: _PREFIX_jenkins
+  sessionAffinity: None
+  type: LoadBalancer
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  labels:
+    app: _PREFIX_jenkins
+  name: _PREFIX_jenkins-plugins
+data:
+  plugins.txt: |-
+    pam-auth:1.3
+    ldap:1.20
+    email-ext:2.63
+    kubernetes-cd:0.2.3
+    azure-commons:0.2.6

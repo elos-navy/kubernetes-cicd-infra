@@ -12,6 +12,8 @@ else
   ACCESS_MODE='ReadWriteMany'
 fi
 
+kubectl delete pv pv$i
+
 echo "
 apiVersion: v1
 kind: PersistentVolume
@@ -20,6 +22,7 @@ metadata:
 spec:
   accessModes:
     - $ACCESS_MODE
+  storageClassName: standard
   persistentVolumeReclaimPolicy: Recycle
   capacity:
     storage: 5Gi
