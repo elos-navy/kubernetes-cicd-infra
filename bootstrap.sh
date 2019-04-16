@@ -26,6 +26,7 @@ function create_from_template {
 }
 
 # Jenkins
+kubectl create -f configmap-components-job.yaml
 create_from_template jenkins-persistent.yaml \
   _PREFIX_ $PREFIX
 
