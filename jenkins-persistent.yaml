@@ -25,6 +25,7 @@ spec:
       labels:
         app: _PREFIX_jenkins
     spec:
+      serviceAccountName: jenkins
       containers:
       - name: jenkins
         image: openshift/jenkins-2-centos7:latest
@@ -122,6 +123,7 @@ data:
   config.xml: |-
     <?xml version='1.1' encoding='UTF-8'?>
     <flow-definition plugin="workflow-job@2.29">
+      <actions/>
       <description></description>
       <keepDependencies>false</keepDependencies>
       <properties>
@@ -133,13 +135,35 @@ data:
         </io.fabric8.jenkins.openshiftsync.BuildConfigProjectProperty>
       </properties>
       <definition class="org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition" plugin="workflow-cps@2.61.1">
-        <script>node {
-      stage(&apos;testik&apos;) {
-        sh &apos;sleep 1&apos;
+        <script>#!groovy
+    
+    def source_git_repo       = &apos;https://github.com/elos-tech/kubernetes-cicd-infra.git&apos;
+    def app_pipeline_git_repo = &apos;https://github.com/elos-tech/openshift-cicd-app.git&apos;
+    def name_prefix        = &apos;cicd-&apos;
+    def app_domain         = &apos;apps.oslab.elostech.cz&apos;
+    def jenkins_project    = &quot;${name_prefix}jenkins&quot;
+    def components_project = &quot;${name_prefix}components&quot;
+    def app_project_dev    = &quot;${name_prefix}tasks-dev&quot;
+    def app_project_prod   = &quot;${name_prefix}tasks-prod&quot;
+    
+    node {
+      stage(&apos;Cleanup&apos;) {
+        sh &quot;&quot;&quot;
+          kubectl --namespace=${components_project} get all
+          kubectl delete all,pvc,cm --selector=app=${name_prefix}nexus3
+          kubectl delete all,pvc,cm --selector=app=${name_prefix}sonar-postgres
+          kubectl delete all,pvc,cm --selector=app=${name_prefix}sonarqube
+        &quot;&quot;&quot;
+      }
+    
+      stage(&apos;Checkout Source&apos;) {
+        git source_git_repo
+      }
+      
+      stage(&apos;Create Nexus&apos;) {
       }
     }</script>
         <sandbox>true</sandbox>
       </definition>
       <triggers/>
       <disabled>false</disabled>
-    </flow-definition>
