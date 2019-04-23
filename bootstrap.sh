@@ -25,13 +25,13 @@ function create_from_template {
   set +x
 }
 
-# Components Namespace
-kubectl create ns ${PREFIX}components
-kubectl config set-context $(kubectl config current-context) --namespace=${PREFIX}components
+# Jenkins Namespace
+kubectl create ns ${PREFIX}jenkins
+kubectl config set-context $(kubectl config current-context) --namespace=${PREFIX}jenkins
 
 # Jenkins
 kubectl create -f jenkins-service-account.yml
-create_from_template jenkins-persistent.yaml \
+create_from_template jenkins-ephemeral.yaml \
   _PREFIX_ $PREFIX
 
 # Nexus

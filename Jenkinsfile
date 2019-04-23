@@ -13,9 +13,9 @@ node {
   stage('Cleanup') {
     sh """
       kubectl --namespace=${components_project} get all
-      kubectl delete all,pvc,cm --selector=app=${name_prefix}nexus3
-      kubectl delete all,pvc,cm --selector=app=${name_prefix}sonar-postgres
-      kubectl delete all,pvc,cm --selector=app=${name_prefix}sonarqube
+      kubectl --namespace=${components_project} delete all,pvc,cm --selector=app=${name_prefix}nexus3
+      kubectl --namespace=${components_project} delete all,pvc,cm --selector=app=${name_prefix}sonar-postgres
+      kubectl --namespace=${components_project} delete all,pvc,cm --selector=app=${name_prefix}sonarqube
     """
   }
 
@@ -24,6 +24,7 @@ node {
   }
   
   stage('Create Nexus') {
+    sh 'ls -la'
   }
 }
 
