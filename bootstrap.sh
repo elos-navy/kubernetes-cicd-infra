@@ -34,23 +34,4 @@ kubectl config set-context $(kubectl config current-context) --namespace=${PREFI
 create_from_template templates/jenkins-persistent.yaml \
   _PREFIX_ $PREFIX
 
-# Nexus
-#create_from_template nexus.yaml \
-#  _PREFIX_ $PREFIX
-
-# Sonarqube
-#create_from_template postgresql-persistent.yaml \
-#  _PREFIX_ ${PREFIX}sonar- \
-#  _POSTGRES_DB_ sonar \
-#  _POSTGRES_USER_ sonar \
-#  _POSTGRES_PASSWORD_ sonar \
-#  _DATABASE_SERVICE_NAME_ postgresql-sonarqube
-
-#create_from_template sonarqube.yaml \
-#  _PREFIX_ $PREFIX
-
-# Dev environment
-
-# Prod environment
-
 rm -rf $TMP_DIR
