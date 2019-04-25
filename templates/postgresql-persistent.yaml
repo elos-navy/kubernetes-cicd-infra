@@ -7,7 +7,8 @@ metadata:
     app: _PREFIX_postgres
 spec:
   accessModes:
-    - ReadWriteMany
+    - ReadWriteOnce
+  storageClassName: default
   resources:
     requests:
       storage: 5Gi

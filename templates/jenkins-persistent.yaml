@@ -1,4 +1,18 @@
 ---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: _PREFIX_jenkins-pv-claim
+  labels:
+    app: _PREFIX_jenkins
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: default
+  resources:
+    requests:
+      storage: 5Gi
+---
 apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
@@ -60,7 +74,8 @@ spec:
           name: components-job
       volumes:
       - name: jenkins-data
-        emptyDir: {}
+        persistentVolumeClaim:
+          claimName: _PREFIX_jenkins-pv-claim
       - name: jenkins-plugins
         configMap:
           name: _PREFIX_jenkins-plugins
@@ -123,23 +138,19 @@ data:
       <definition class="org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition" plugin="workflow-cps@2.61.1">
         <script>#!groovy
     
-    def source_git_repo       = &apos;https://github.com/elos-tech/kubernetes-cicd-infra.git&apos;
-    def name_prefix        = &apos;cicd-&apos;
-    def jenkins_project    = &quot;${name_prefix}jenkins&quot;
-    def components_project = &quot;${name_prefix}components&quot;
-    def app_project_dev    = &quot;${name_prefix}tasks-dev&quot;
-    def app_project_prod   = &quot;${name_prefix}tasks-prod&quot;
+    def source_git_repo      = &apos;https://github.com/elos-tech/kubernetes-cicd-infra.git&apos;
+    def name_prefix          = &apos;cicd-&apos;
+    def prefix_label         = &apos;PREFIX&apos; // Helper variable for prefix substitution with double sed-ed templates.
+    def jenkins_namespace    = &quot;${name_prefix}jenkins&quot;
+    def components_namespace = &quot;${name_prefix}components&quot;
+    def app_dev_namespace    = &quot;${name_prefix}tasks-dev&quot;
+    def app_prod_namespace   = &quot;${name_prefix}tasks-prod&quot;
     
     node {
       stage(&apos;Cleanup&apos;) {
-        sh &quot;&quot;&quot;
-          kubectl delete namespace $components_project
-          
-          #kubectl --namespace=${components_project} get all
-          #kubectl --namespace=${components_project} delete all,pvc,cm --selector=app=${name_prefix}nexus3
-          #kubectl --namespace=${components_project} delete all,pvc,cm --selector=app=${name_prefix}sonar-postgres
-          #kubectl --namespace=${components_project} delete all,pvc,cm --selector=app=${name_prefix}sonarqube
-        &quot;&quot;&quot;
+        delete_namespace(components_namespace)
+        delete_namespace(app_dev_namespace)
+        delete_namespace(app_prod_namespace)
       }
     
       stage(&apos;Checkout Source&apos;) {
@@ -147,37 +158,38 @@ data:
       }
       
       stage(&apos;Create Components namespace&apos;) {
-        sh &quot;&quot;&quot;
-          kubectl create ns $components_project
-          kubectl --namespace=${components_project} create -f jenkins-service-account.yml
-        &quot;&quot;&quot;
+        create_from_template &quot;templates/components-namespace.yaml _${prefix_label}_ $name_prefix&quot;
       }
       
       stage(&apos;Create Nexus&apos;) {
-        def prefix_name = &apos;PREFIX&apos;
-        create_from_template &quot;nexus.yaml _${prefix_name}_ $name_prefix&quot;
+        create_from_template &quot;templates/nexus.yaml _${prefix_label}_ $name_prefix&quot;
       }
       
       stage(&apos;Create Sonarqube&apos;) {
-        def prefix_name = &apos;PREFIX&apos;
-        create_from_template &quot;&quot;&quot;postgresql-persistent.yaml \
-          _${prefix_name}_ ${name_prefix}sonar- \
+        create_from_template &quot;&quot;&quot;templates/postgresql-persistent.yaml \
+          _${prefix_label}_ ${name_prefix}sonar- \
           _POSTGRES_DB_ sonar \
           _POSTGRES_USER_ sonar \
           _POSTGRES_PASSWORD_ sonar \
           _DATABASE_SERVICE_NAME_ postgresql-sonarqube
         &quot;&quot;&quot;
         
-        create_from_template &quot;sonarqube.yaml _${prefix_name}_ ${name_prefix}&quot;
+        create_from_template &quot;templates/sonarqube.yaml _${prefix_label}_ ${name_prefix}&quot;
       }
       
       stage(&apos;Create DEV namespace&apos;) {
-        sh &quot;kubectl create ns $app_project_dev&quot;
+        create_from_template &quot;templates/tasks-dev-namespace.yaml _${prefix_label}_ $name_prefix&quot;
       }
       
       stage(&apos;Create PROD namespace&apos;) {
-        sh &quot;kubectl create ns $app_project_prod&quot;
+        create_from_template &quot;templates/tasks-prod-namespace.yaml _${prefix_label}_ $name_prefix&quot;
       }
+    }
+    
+    def delete_namespace(namespace_name) {
+      sh &quot;&quot;&quot;
+        kubectl delete namespace $namespace_name || echo
+      &quot;&quot;&quot;
     }
     
     def create_from_template(request) {
@@ -216,3 +228,58 @@ data:
       <triggers/>
       <disabled>false</disabled>
     </flow-definition>
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: jenkins
+---
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+  name: jenkins
+rules:
+- apiGroups: ["","apps"]
+  resources: ["pods","secrets","configmaps","endpoints","replicationcontrollers","services","persistentvolumeclaims","daemonsets","deployments","replicasets","statefulsets","jobs","crontabs"]
+  verbs: ["create","delete","get","list","patch","update","watch"]
+- apiGroups: ["autoscaling"]
+  resources: ["horizontalpodautoscalers"]
+  verbs: ["create","delete","get","list","patch","update","watch"]
+- apiGroups: ["batch"]
+  resources: ["jobs","cronjobs"]
+  verbs: ["create","delete","get","list","patch","update","watch"]
+- apiGroups: [""]
+  resources: ["pods/exec"]
+  verbs: ["create","delete","get","list","patch","update","watch"]
+- apiGroups: [""]
+  resources: ["pods/log"]
+  verbs: ["get","list","watch"]
+- apiGroups: [""]
+  resources: ["secrets"]
+  verbs: ["get"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: RoleBinding
+metadata:
+  name: jenkins
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: jenkins
+subjects:
+- kind: ServiceAccount
+  name: jenkins
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRoleBinding
+metadata:
+  name: jenkins
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+- kind: ServiceAccount
+  name: jenkins
+  namespace: cicd-jenkins

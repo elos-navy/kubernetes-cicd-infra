@@ -30,8 +30,7 @@ kubectl create ns ${PREFIX}jenkins
 kubectl config set-context $(kubectl config current-context) --namespace=${PREFIX}jenkins
 
 # Jenkins
-kubectl create -f jenkins-service-account.yml
-create_from_template jenkins-ephemeral.yaml \
+create_from_template jenkins-persistent.yaml \
   _PREFIX_ $PREFIX
 
 # Nexus
