@@ -26,11 +26,12 @@ function create_from_template {
 }
 
 # Jenkins Namespace
-kubectl create ns ${PREFIX}jenkins
+create_from_template templates/jenkins-namespace.yaml \
+  _PREFIX_ $PREFIX
 kubectl config set-context $(kubectl config current-context) --namespace=${PREFIX}jenkins
 
 # Jenkins
-create_from_template jenkins-persistent.yaml \
+create_from_template templates/jenkins-persistent.yaml \
   _PREFIX_ $PREFIX
 
 # Nexus
