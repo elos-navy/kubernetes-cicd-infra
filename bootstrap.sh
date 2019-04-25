@@ -1,6 +1,7 @@
 #!/bin/bash
 
 PREFIX='cicd-'
+STORAGE_ACCOUNT='lsteststorageaccount'
 TMP_DIR=$(mktemp -d)
 
 function create_from_template {
@@ -29,9 +30,13 @@ function create_from_template {
 create_from_template templates/jenkins-namespace.yaml \
   _PREFIX_ $PREFIX
 kubectl config set-context $(kubectl config current-context) --namespace=${PREFIX}jenkins
-create_from_template templates/jenkins-pvc.yaml _PREFIX_ $PREFIX
 
-sleep 10
+# Storage Account
+create_from_template templates/azure-file-storage-class.yaml \
+  _PREFIX_ $PREFIX \
+  _STORAGE_ACCOUNT_ $STORAGE_ACCOUNT
+#kubectl create -f templates/azure-storage-secret.yaml
+
 
 # Jenkins
 create_from_template templates/jenkins-persistent.yaml \

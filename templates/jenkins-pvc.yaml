@@ -7,7 +7,7 @@ metadata:
     app: _PREFIX_jenkins
 spec:
   accessModes:
-    - ReadWriteOnce
+    - ReadWriteMany
   storageClassName: default
   resources:
     requests:

@@ -2,7 +2,7 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: _PREFIX_tasks-dev
+  name: _PREFIX_tasks-prod
 spec:
   finalizers:
   - kubernetes

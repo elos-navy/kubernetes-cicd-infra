@@ -7,6 +7,8 @@ kubectl delete clusterrolebinding jenkins
 
 kubectl delete namespace ${PREFIX}components
 
+kubectl delete sc ${PREFIX}azurefile
+
 
 #kubectl delete all,pvc,cm --selector=app=${PREFIX}jenkins
 #kubectl delete all,pvc,cm --selector=app=${PREFIX}nexus3
