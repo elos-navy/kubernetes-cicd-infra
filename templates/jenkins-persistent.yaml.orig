@@ -60,7 +60,8 @@ spec:
           name: components-job
       volumes:
       - name: jenkins-data
-        emptyDir: {}
+        persistentVolumeClaim:
+          claimName: _PREFIX_jenkins-pv-claim
       - name: jenkins-plugins
         configMap:
           name: _PREFIX_jenkins-plugins

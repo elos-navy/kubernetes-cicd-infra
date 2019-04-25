@@ -29,6 +29,9 @@ function create_from_template {
 create_from_template templates/jenkins-namespace.yaml \
   _PREFIX_ $PREFIX
 kubectl config set-context $(kubectl config current-context) --namespace=${PREFIX}jenkins
+create_from_template templates/jenkins-pvc.yaml _PREFIX_ $PREFIX
+
+sleep 10
 
 # Jenkins
 create_from_template templates/jenkins-persistent.yaml \
