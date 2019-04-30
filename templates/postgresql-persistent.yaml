@@ -59,7 +59,7 @@ metadata:
     app: _PREFIX_postgres
   name: _DATABASE_SERVICE_NAME_
 spec:
-  type: NodePort
+  type: ClusterIP
   ports:
   - port: 8081
     protocol: TCP

@@ -51,7 +51,7 @@ spec:
   selector:
     app: _PREFIX_nexus3
   sessionAffinity: None
-  type: LoadBalancer
+  type: ClusterIP
 ---
 apiVersion: v1
 kind: Service
@@ -68,4 +68,4 @@ spec:
   selector:
     app: _PREFIX_nexus3
   sessionAffinity: None
-  type: LoadBalancer
+  type: ClusterIP
