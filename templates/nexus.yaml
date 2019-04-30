@@ -60,7 +60,7 @@ metadata:
     app: _PREFIX_nexus3
   name: _PREFIX_nexus-registry
 spec:
-  externalTrafficPolicy: Cluster
+  type: ClusteIP
   ports:
   - port: 5000
     protocol: TCP
