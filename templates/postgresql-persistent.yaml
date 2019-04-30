@@ -7,8 +7,8 @@ metadata:
     app: _PREFIX_postgres
 spec:
   accessModes:
-    - ReadWriteMany
-  storageClassName: _PREFIX_azurefile
+    - ReadWriteOnce
+  storageClassName: default
   resources:
     requests:
       storage: 5Gi

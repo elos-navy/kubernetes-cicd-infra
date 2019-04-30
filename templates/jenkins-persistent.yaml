@@ -7,8 +7,8 @@ metadata:
     app: _PREFIX_jenkins
 spec:
   accessModes:
-    - ReadWriteMany
-  storageClassName: _PREFIX_azurefile
+    - ReadWriteOnce
+  storageClassName: default
   resources:
     requests:
       storage: 5Gi
@@ -50,6 +50,15 @@ spec:
         - mountPath: /var/lib/jenkins
           name: jenkins-data
       initContainers:
+      - name: setup-permissions
+        image: alpine:latest
+        command:
+          - /bin/sh
+          - -c
+          - ls -l /var/lib/jenkins; chown 1001:1001 /var/lib/jenkins
+        volumeMounts:
+        - mountPath: /var/lib/jenkins
+          name: jenkins-data
       - name: install-plugins
         image: openshift/jenkins-2-centos7:latest
         command:

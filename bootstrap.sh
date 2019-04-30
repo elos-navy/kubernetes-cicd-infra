@@ -31,12 +31,10 @@ create_from_template templates/jenkins-namespace.yaml \
   _PREFIX_ $PREFIX
 kubectl config set-context $(kubectl config current-context) --namespace=${PREFIX}jenkins
 
-# Storage Account
-create_from_template templates/azure-file-storage-class.yaml \
-  _PREFIX_ $PREFIX \
-  _STORAGE_ACCOUNT_ $STORAGE_ACCOUNT
-#kubectl create -f templates/azure-storage-secret.yaml
-
+# Storage Class (Azure File for ReadWriteMany PV types)
+#create_from_template templates/azure-file-storage-class.yaml \
+#  _PREFIX_ $PREFIX \
+#  _STORAGE_ACCOUNT_ $STORAGE_ACCOUNT
 
 # Jenkins
 create_from_template templates/jenkins-persistent.yaml \

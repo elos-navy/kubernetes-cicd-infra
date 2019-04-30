@@ -10,6 +10,10 @@ function create_rg {
   az group create --name $RESOURCE_GROUP --location $LOCATION
 }
 
+function delete_rg {
+  az group delete --name $RESOURCE_GROUP
+}
+
 function create_cluster {
   az aks create \
     --resource-group $RESOURCE_GROUP \
@@ -17,6 +21,12 @@ function create_cluster {
     --node-count 1 \
     --enable-addons http_application_routing \
     --generate-ssh-keys
+}
+
+function delete_cluster {
+  az aks delete \
+    --resource-group $RESOURCE_GROUP \
+    --name $CLUSTER_NAME
 }
 
 function create_storage_account {
@@ -33,6 +43,10 @@ function setup_credentials {
 
 #create_rg
 #create_cluster
-create_storage_account
-#setup_credentials
 
+#delete_rg
+#delete_cluster
+
+#create_storage_account # Pre pouzivanie azure-file typu pre storageclass - pre ReadWriteMany PVC typy.
+
+setup_credentials
