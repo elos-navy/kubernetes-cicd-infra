@@ -70,4 +70,3 @@ spec:
   selector:
     app: _PREFIX_sonarqube
   sessionAffinity: None
-  type: ClusterIP
