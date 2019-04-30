@@ -167,15 +167,31 @@ data:
       }
       
       stage(&apos;Create Components namespace&apos;) {
-        create_from_template &quot;templates/components-namespace.yaml _${prefix_label}_ $name_prefix&quot;
+        create_from_template &apos;default&apos;, &quot;templates/components-namespace.yaml _${prefix_label}_ $name_prefix&quot;
       }
       
       stage(&apos;Create Nexus&apos;) {
-        create_from_template &quot;templates/nexus.yaml _${prefix_label}_ $name_prefix&quot;
+        create_from_template components_namespace, &quot;templates/nexus.yaml _${prefix_label}_ $name_prefix&quot;
+        wait_for_deployment_ready(components_namespace, &quot;${name_prefix}nexus3&quot;)
+        
+        // Initialize Nexus
+        def pod_name = get_pod_name(components_namespace, &quot;${name_prefix}nexus3&quot;)
+        sh &quot;&quot;&quot;
+          kubectl --namespace cicd-components cp artefacts/setup_nexus3.sh $pod_name:/tmp/
+          
+          FAILED=0
+          while true
+          do
+            kubectl --namespace cicd-components exec $pod_name -- /bin/bash /tmp/setup_nexus3.sh admin admin123 http://localhost:8081 || FAILED=1
+            [ \$FAILED -eq 0 ] &amp;&amp; break
+            FAILED=0
+            sleep 10
+          done
+        &quot;&quot;&quot;
       }
       
       stage(&apos;Create Sonarqube&apos;) {
-        create_from_template &quot;&quot;&quot;templates/postgresql-persistent.yaml \
+        create_from_template components_namespace, &quot;&quot;&quot;templates/postgresql-persistent.yaml \
           _${prefix_label}_ ${name_prefix}sonar- \
           _POSTGRES_DB_ sonar \
           _POSTGRES_USER_ sonar \
@@ -183,25 +199,37 @@ data:
           _DATABASE_SERVICE_NAME_ postgresql-sonarqube
         &quot;&quot;&quot;
         
-        create_from_template &quot;templates/sonarqube.yaml _${prefix_label}_ ${name_prefix}&quot;
+        create_from_template components_namespace, &quot;templates/sonarqube.yaml _${prefix_label}_ ${name_prefix}&quot;
       }
       
       stage(&apos;Create DEV namespace&apos;) {
-        create_from_template &quot;templates/tasks-dev-namespace.yaml _${prefix_label}_ $name_prefix&quot;
+        create_from_template components_namespace, &quot;templates/tasks-dev-namespace.yaml _${prefix_label}_ $name_prefix&quot;
       }
       
       stage(&apos;Create PROD namespace&apos;) {
-        create_from_template &quot;templates/tasks-prod-namespace.yaml _${prefix_label}_ $name_prefix&quot;
+        create_from_template components_namespace, &quot;templates/tasks-prod-namespace.yaml _${prefix_label}_ $name_prefix&quot;
       }
     }
     
     def delete_namespace(namespace_name) {
       sh &quot;&quot;&quot;
         kubectl delete namespace $namespace_name || echo
+        while true;
+        do
+          kubectl get namespaces $namespace_name || break
+          sleep 2
+        done
       &quot;&quot;&quot;
     }
     
-    def create_from_template(request) {
+    def get_pod_name(namespace, app_name) {
+      return sh (
+        script: &quot;kubectl --namespace $namespace get pod | grep &apos;^$app_name&apos; | awk &apos;{ print \$1 }&apos;&quot;,
+        returnStdout: true
+      ).trim()
+    }
+    
+    def create_from_template(namespace, request) {
       sh &quot;&quot;&quot;
         TMP_DIR=\$(mktemp -d)
     
@@ -223,13 +251,28 @@ data:
             shift
           done
     
-          kubectl create -f &quot;\${TMP_DIR}/\$(basename \$FILE)&quot;
+          kubectl --namespace $namespace create -f &quot;\${TMP_DIR}/\$(basename \$FILE)&quot;
           set +x
         }
         
         create_from_template $request
     
         rm -rf \$TMP_DIR
+      &quot;&quot;&quot;
+    }
+    
+    def wait_for_deployment_ready(namespace, deployment) {
+      sh &quot;&quot;&quot;
+        while true;
+        do
+          READY=\$(kubectl --namespace $namespace get deployment $deployment --no-headers | awk &apos;{ print \$5}&apos;)
+          echo \$READY
+          if [ \$READY -ge 1 ]; then
+            break
+          fi
+          
+          sleep 10
+        done
       &quot;&quot;&quot;
     }</script>
         <sandbox>true</sandbox>

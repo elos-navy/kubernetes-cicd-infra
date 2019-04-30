@@ -41,12 +41,40 @@ function setup_credentials {
   az aks get-credentials --resource-group $RESOURCE_GROUP --name $CLUSTER_NAME
 }
 
+function usage {
+  cat <<EOF
+Usage: $(basename $0) <option>
+
+Options:
+  create_rg
+  create_cluster
+  delete_rg
+  delete_cluster
+  setup_credentials
+
+EOF
+}
+
+case $1 in
+  create_rg)
+    create_rg;;
+  create_cluster)
+    create_cluster;;
+  delete_rg)
+    delete_rg;;
+  delete_cluster)
+    delete_cluster;;
+  setup_credentials)
+    setup_credentials;;
+  *)
+    usage;;
+esac
 #create_rg
 #create_cluster
 
-#delete_rg
 #delete_cluster
+#delete_rg
 
 #create_storage_account # Pre pouzivanie azure-file typu pre storageclass - pre ReadWriteMany PVC typy.
 
-setup_credentials
+#setup_credentials
