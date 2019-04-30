@@ -52,7 +52,7 @@ spec:
         command:
           - /bin/sh
           - -c
-          - chmod 999:998 /mnt/
+          - chown 999:998 /mnt/
         volumeMounts:
         - mountPath: /mnt
           name: sonarqube-data
