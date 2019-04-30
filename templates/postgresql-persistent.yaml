@@ -47,6 +47,17 @@ spec:
           volumeMounts:
             - mountPath: /var/lib/postgresql/data
               name: postgredb
+
+      initContainers:
+      - name: setup-datadir
+        image: alpine:latest
+        command:
+          - /bin/sh
+          - -c
+          - rm -rf /mnt/lost+found
+        volumeMounts:
+        - mountPath: /mnt
+          name: postgredb
       volumes:
         - name: postgredb
           persistentVolumeClaim:
