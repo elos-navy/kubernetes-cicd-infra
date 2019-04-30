@@ -47,7 +47,6 @@ spec:
           volumeMounts:
             - mountPath: /var/lib/postgresql/data
               name: postgredb
-
       initContainers:
       - name: setup-datadir
         image: alpine:latest

@@ -46,6 +46,16 @@ spec:
         volumeMounts:
           - mountPath: /opt/sonarqube/data
             name: sonarqube-data
+      initContainers:
+      - name: setup-datadir
+        image: alpine:latest
+        command:
+          - /bin/sh
+          - -c
+          - chmod 999:998 /mnt/
+        volumeMounts:
+        - mountPath: /mnt
+          name: sonarqube-data
       volumes:
         - name: sonarqube-data
           persistentVolumeClaim:
