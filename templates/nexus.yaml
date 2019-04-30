@@ -43,7 +43,7 @@ metadata:
     app: _PREFIX_nexus3
   name: _PREFIX_nexus3
 spec:
-  externalTrafficPolicy: Cluster
+  type: ClusterIP
   ports:
   - port: 8081
     protocol: TCP
@@ -51,7 +51,6 @@ spec:
   selector:
     app: _PREFIX_nexus3
   sessionAffinity: None
-  type: ClusterIP
 ---
 apiVersion: v1
 kind: Service
@@ -60,7 +59,7 @@ metadata:
     app: _PREFIX_nexus3
   name: _PREFIX_nexus-registry
 spec:
-  type: ClusteIP
+  type: ClusterIP
   ports:
   - port: 5000
     protocol: TCP
