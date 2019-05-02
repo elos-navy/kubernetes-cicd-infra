@@ -2,13 +2,19 @@
 
 Skripty a sablony pre vytvorenie CI/CD projektu v Azure AKS
 
+
+## Konfiguracia
+
+```
+vim config # Nastavenie nazvov rg, clusteru, registry. Pripadne nechat to co tam je, ale cluster by nemal existovat.
+```
+
 ## Vytvorenie clusteru
 
 ```
-vim ./k8s_scripts/manage_aks_cluster.sh # Nastavenie nazvu rg a clusteru, pripadne nechat to co tam je, ale cluster by nemal existovat.
-
 ./k8s_scripts/manage_aks_cluster.sh create_rg
 ./k8s_scripts/manage_aks_cluster.sh create_cluster
+./k8s_scripts/manage_aks_cluster.sh create_acr
 ./k8s_scripts/manage_aks_cluster.sh setup_credentials
 ```
 
@@ -16,6 +22,8 @@ vim ./k8s_scripts/manage_aks_cluster.sh # Nastavenie nazvu rg a clusteru, pripad
 
 ```
 ./k8s_scripts/manage_aks_cluster.sh delete_cluster
+./k8s_scripts/manage_aks_cluster.sh delete_acr
+./k8s_scripts/manage_aks_cluster.sh delete_rg
 ```
 
 ## Vytvorenie Jenkinsu

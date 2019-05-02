@@ -1,10 +1,6 @@
 #!/bin/bash
 
-CLUSTER_NAME='ls-test-cluster'
-STORAGE_ACCOUNT_NAME='lsstorageaccount'
-LOCATION='westeurope'
-RESOURCE_GROUP='ls-test-rg'
-SHADOW_RESOURCE_GROUP="MC_${RESOURCE_GROUP}_${CLUSTER_NAME}_${LOCATION}"
+source ../config
 
 function create_rg {
   az group create --name $RESOURCE_GROUP --location $LOCATION
@@ -29,6 +25,23 @@ function delete_cluster {
     --name $CLUSTER_NAME
 }
 
+function create_acr {
+  az acr create \
+    --resource-group $RESOURCE_GROUP \
+    --name $REGISTRY_NAME \
+    --admin-enabled true \
+    --sku Standard
+
+  az acr credential show \
+    --name $REGISTRY_NAME
+}
+
+function delete_acr {
+  az acr delete \
+    --resource-group $RESOURCE_GROUP \
+    --name $REGISTRY_NAME
+}
+
 function create_storage_account {
   az storage account create \
     --resource-group $SHADOW_RESOURCE_GROUP \
@@ -47,9 +60,11 @@ Usage: $(basename $0) <option>
 
 Options:
   create_rg
-  create_cluster
   delete_rg
+  create_cluster
   delete_cluster
+  create_acr
+  delete_acr
   setup_credentials
 
 EOF
@@ -58,23 +73,18 @@ EOF
 case $1 in
   create_rg)
     create_rg;;
-  create_cluster)
-    create_cluster;;
   delete_rg)
     delete_rg;;
+  create_cluster)
+    create_cluster;;
   delete_cluster)
     delete_cluster;;
+  create_acr)
+    create_acr;;
+  delete_acr)
+    delete_acr;;
   setup_credentials)
     setup_credentials;;
   *)
     usage;;
 esac
-#create_rg
-#create_cluster
-
-#delete_cluster
-#delete_rg
-
-#create_storage_account # Pre pouzivanie azure-file typu pre storageclass - pre ReadWriteMany PVC typy.
-
-#setup_credentials

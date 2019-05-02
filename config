@@ -1,0 +1,12 @@
+CLUSTER_NAME='ls-test-cluster'
+
+# 'registry_name' must conform to the following pattern: '^[a-zA-Z0-9]*$'
+REGISTRY_NAME='lstestregistry'
+
+STORAGE_ACCOUNT_NAME='lsstorageaccount'
+LOCATION='westeurope'
+RESOURCE_GROUP='ls-test-rg'
+SHADOW_RESOURCE_GROUP="MC_${RESOURCE_GROUP}_${CLUSTER_NAME}_${LOCATION}"
+
+PREFIX='cicd-'
+
