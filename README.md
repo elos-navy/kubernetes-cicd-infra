@@ -3,6 +3,11 @@
 Skripty a sablony pre vytvorenie CI/CD projektu v Azure AKS
 
 
+## Prerekvizity
+
+Treba mat nainstalovane azure CLI - prikaz `az` a balicek/prikaz `jq`.
+Je nutne sa najskor prihlasit prikazom `az login`.
+
 ## Konfiguracia
 
 ```

@@ -28,6 +28,24 @@ function create_from_template {
 
 set -x
 
+
+# Jenkins Namespace
+create_from_template templates/jenkins-namespace.yaml \
+  _PREFIX_ $PREFIX
+kubectl config set-context $(kubectl config current-context) --namespace=${PREFIX}jenkins
+
+
+# Storage Class (Azure File for ReadWriteMany PV types)
+#create_from_template templates/azure-file-storage-class.yaml \
+#  _PREFIX_ $PREFIX \
+#  _STORAGE_ACCOUNT_ $STORAGE_ACCOUNT_NAME
+
+
+# Jenkins
+create_from_template templates/jenkins-persistent.yaml \
+  _PREFIX_ $PREFIX
+
+
 # Build Jenkins agent POD
 ACR_CREDENTIALS=$(az acr credential show -n $REGISTRY_NAME)
 ACR_USERNAME=$(echo $ACR_CREDENTIALS | jq '.username' | sed 's/"//g')
@@ -41,21 +59,6 @@ docker login \
 
 docker build -t ${ACR_HOSTNAME}/jenkins/jenkins-agent-appdev:latest ./artefacts/
 docker push ${ACR_HOSTNAME}/jenkins/jenkins-agent-appdev:latest
-
-
-# Jenkins Namespace
-create_from_template templates/jenkins-namespace.yaml \
-  _PREFIX_ $PREFIX
-kubectl config set-context $(kubectl config current-context) --namespace=${PREFIX}jenkins
-
-# Storage Class (Azure File for ReadWriteMany PV types)
-#create_from_template templates/azure-file-storage-class.yaml \
-#  _PREFIX_ $PREFIX \
-#  _STORAGE_ACCOUNT_ $STORAGE_ACCOUNT_NAME
-
-# Jenkins
-create_from_template templates/jenkins-persistent.yaml \
-  _PREFIX_ $PREFIX
 
 
 rm -rf $TMP_DIR
