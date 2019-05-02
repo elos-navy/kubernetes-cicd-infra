@@ -34,7 +34,7 @@ kubectl get svc cicd-jenkins
 
 V stlpci `EXTERNAL-IP` je adresa, na ktoru je mozne sa pripojit cez web prehliadac a port 8080.
 
-Meno/heslo do web rozhrania: `admin/xxxxxx`
+Meno/heslo do web rozhrania: `admin/admin`
 
 ## Zmazanie komponent a jenkinsu
 
