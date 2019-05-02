@@ -26,8 +26,6 @@ function create_from_template {
   set +x
 }
 
-set -x
-
 
 # Jenkins Namespace
 create_from_template templates/jenkins-namespace.yaml \
@@ -46,19 +44,20 @@ create_from_template templates/jenkins-persistent.yaml \
   _PREFIX_ $PREFIX
 
 
-# Build Jenkins agent POD
+# Build and push Jenkins agent POD to ACR registry
+az acr build -t ${PREFIX}jenkins/jenkins-agent-appdev:latest -r $REGISTRY_NAME artefacts/
+
+
+# Set k8s secret for pulling images from ACR registry
 ACR_CREDENTIALS=$(az acr credential show -n $REGISTRY_NAME)
 ACR_USERNAME=$(echo $ACR_CREDENTIALS | jq '.username' | sed 's/"//g')
 ACR_PASSWORD=$(echo $ACR_CREDENTIALS | jq '.passwords[0].value' | sed 's/"//g')
 ACR_HOSTNAME=$(az acr show -n $REGISTRY_NAME | jq '.loginServer' | sed 's/"//g')
-
-docker login \
-  -u $ACR_USERNAME \
-  -p $ACR_PASSWORD \
-  $ACR_HOSTNAME
-
-docker build -t ${ACR_HOSTNAME}/jenkins/jenkins-agent-appdev:latest ./artefacts/
-docker push ${ACR_HOSTNAME}/jenkins/jenkins-agent-appdev:latest
+kubectl create secret docker-registry cloud-technologies-registry \
+    --docker-server=$ACR_HOSTNAME \
+    --docker-username=$ACR_USERNAME \
+    --docker-password=$ACR_PASSWORD \
+    --docker-email='ls@elostech.cz'
 
 
 rm -rf $TMP_DIR
