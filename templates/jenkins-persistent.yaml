@@ -70,7 +70,7 @@ spec:
           name: jenkins-data
         - mountPath: /mnt
           name: jenkins-plugins
-      - name: prepare-jobs
+      - name: prepare-components-job
         image: openshift/jenkins-2-centos7:latest
         command:
           - /bin/sh
@@ -81,6 +81,17 @@ spec:
           name: jenkins-data
         - mountPath: /mnt
           name: components-job
+      - name: prepare-app-job
+        image: openshift/jenkins-2-centos7:latest
+        command:
+          - /bin/sh
+          - -c
+          - mkdir -p /var/lib/jenkins/jobs/cicd-app-pipeline/builds; cd /var/lib/jenkins/jobs/cicd-app-pipeline/builds; touch legacyIds; ln -s ./-1 lastFailedBuild; ln -s ./-1 lastStableBuild; ln -s ./-1 lastSuccessfulBuild; ln -s ./-1 lastUnstableBuild; ln -s ./-1 lastUnsuccessfulBuild; cp /mnt/config.xml /var/lib/jenkins/jobs/cicd-app-pipeline/
+        volumeMounts:
+        - mountPath: /var/lib/jenkins
+          name: jenkins-data
+        - mountPath: /mnt
+          name: app-job
       volumes:
       - name: jenkins-data
         persistentVolumeClaim:
@@ -91,6 +102,9 @@ spec:
       - name: components-job
         configMap:
           name: _PREFIX_components-job
+      - name: app-job
+        configMap:
+          name: _PREFIX_app-job
 ---
 apiVersion: v1
 kind: Service
@@ -128,7 +142,7 @@ kind: ConfigMap
 metadata:
   labels:
     app: _PREFIX_jenkins
-  name: cicd-components-job
+  name: _PREFIX_components-job
 data:
   config.xml: |-
     <?xml version='1.1' encoding='UTF-8'?>
@@ -199,7 +213,11 @@ data:
           _DATABASE_SERVICE_NAME_ postgresql-sonarqube
         &quot;&quot;&quot;
         
+        // Wait for deployment of sonarqube until postgres is ready to handle requests.
+        wait_for_deployment_ready(components_namespace, &quot;${name_prefix}sonar-postgres&quot;)
+        
         create_from_template components_namespace, &quot;templates/sonarqube.yaml _${prefix_label}_ ${name_prefix}&quot;
+        wait_for_deployment_ready(components_namespace, &quot;${name_prefix}sonarqube&quot;)
       }
       
       stage(&apos;Create DEV namespace&apos;) {
@@ -274,6 +292,38 @@ data:
           sleep 10
         done
       &quot;&quot;&quot;
+    }</script>
+        <sandbox>true</sandbox>
+      </definition>
+      <triggers/>
+      <disabled>false</disabled>
+    </flow-definition>
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  labels:
+    app: _PREFIX_jenkins
+  name: _PREFIX_app-job
+data:
+  config.xml: |-
+    <?xml version='1.1' encoding='UTF-8'?>
+    <flow-definition plugin="workflow-job@2.29">
+      <description></description>
+      <keepDependencies>false</keepDependencies>
+      <properties>
+        <io.fabric8.jenkins.openshiftsync.BuildConfigProjectProperty plugin="openshift-sync@1.0.27">
+          <uid></uid>
+          <namespace></namespace>
+          <name></name>
+          <resourceVersion></resourceVersion>
+        </io.fabric8.jenkins.openshiftsync.BuildConfigProjectProperty>
+      </properties>
+      <definition class="org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition" plugin="workflow-cps@2.61.1">
+        <script>node {
+      stage(&apos;Hello&apos;) {
+        
+      }
     }</script>
         <sandbox>true</sandbox>
       </definition>
