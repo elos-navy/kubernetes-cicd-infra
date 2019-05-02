@@ -26,7 +26,15 @@ vim ./k8s_scripts/manage_aks_cluster.sh # Nastavenie nazvu rg a clusteru, pripad
 
 ### Jenkins login
 
-admin/xxxxxx
+Zistit verejnu adresu jenkins sluzby prikazom:
+
+```
+kubectl get svc cicd-jenkins
+```
+
+V stlpci `EXTERNAL-IP` je adresa, na ktoru je mozne sa pripojit cez web prehliadac a port 8080.
+
+Meno/heslo do web rozhrania: `admin/xxxxxx`
 
 ## Zmazanie komponent a jenkinsu
 
