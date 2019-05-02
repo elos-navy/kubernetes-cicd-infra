@@ -1,6 +1,6 @@
 #!/bin/bash
 
-source ../config
+source ./config
 
 function create_rg {
   az group create --name $RESOURCE_GROUP --location $LOCATION

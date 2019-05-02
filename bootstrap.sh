@@ -53,7 +53,7 @@ ACR_CREDENTIALS=$(az acr credential show -n $REGISTRY_NAME)
 ACR_USERNAME=$(echo $ACR_CREDENTIALS | jq '.username' | sed 's/"//g')
 ACR_PASSWORD=$(echo $ACR_CREDENTIALS | jq '.passwords[0].value' | sed 's/"//g')
 ACR_HOSTNAME=$(az acr show -n $REGISTRY_NAME | jq '.loginServer' | sed 's/"//g')
-kubectl create secret docker-registry cloud-technologies-registry \
+kubectl create secret docker-registry acrregistry \
     --docker-server=$ACR_HOSTNAME \
     --docker-username=$ACR_USERNAME \
     --docker-password=$ACR_PASSWORD \
