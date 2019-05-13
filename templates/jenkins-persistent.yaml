@@ -124,6 +124,22 @@ spec:
   type: LoadBalancer
 ---
 apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: _PREFIX_jenkins
+  name: _PREFIX_jenkins-jnlp
+spec:
+  ports:
+  - port: 50000
+    protocol: TCP
+    targetPort: 50000
+  selector:
+    app: _PREFIX_jenkins
+  sessionAffinity: None
+  type: ClusterIP
+---
+apiVersion: v1
 kind: ConfigMap
 metadata:
   labels:
@@ -309,6 +325,15 @@ data:
   config.xml: |-
     <?xml version='1.1' encoding='UTF-8'?>
     <flow-definition plugin="workflow-job@2.29">
+      <actions>
+        <org.jenkinsci.plugins.pipeline.modeldefinition.actions.DeclarativeJobAction plugin="pipeline-model-definition@1.3.4.1"/>
+        <org.jenkinsci.plugins.pipeline.modeldefinition.actions.DeclarativeJobPropertyTrackerAction plugin="pipeline-model-definition@1.3.4.1">
+          <jobProperties/>
+          <triggers/>
+          <parameters/>
+          <options/>
+        </org.jenkinsci.plugins.pipeline.modeldefinition.actions.DeclarativeJobPropertyTrackerAction>
+      </actions>
       <description></description>
       <keepDependencies>false</keepDependencies>
       <properties>
@@ -320,9 +345,33 @@ data:
         </io.fabric8.jenkins.openshiftsync.BuildConfigProjectProperty>
       </properties>
       <definition class="org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition" plugin="workflow-cps@2.61.1">
-        <script>node {
-      stage(&apos;Hello&apos;) {
-        
+        <script>def label = &quot;maven-testik&quot;
+    
+    podTemplate(
+      label: label,
+      cloud: &apos;openshift&apos;,
+      envVars: [
+        envVar(
+          key: &apos;JENKINS_URL&apos;, value: &apos;http://cicd-jenkins.cicd-jenkins.svc.cluster.local:8080/&apos;
+        ),
+        envVar(
+          key: &apos;JENKINS_TUNNEL&apos;, value: &apos;cicd-jenkins-jnlp.cicd-jenkins.svc.cluster.local:50000&apos;
+        )
+      ],
+      containers: [
+        containerTemplate(
+          name: &apos;maven&apos;,
+          image: &apos;lstestregistry.azurecr.io/cicd-jenkins/jenkins-agent-appdev&apos;,
+          ttyEnabled: true,
+          command: &apos;cat&apos;)
+      ]
+    ) {
+      node(label) {
+        stage(&apos;Run maven&apos;) {
+          container(&apos;maven&apos;) {
+            sh &apos;mvn --version&apos;
+          }
+        }
       }
     }</script>
         <sandbox>true</sandbox>
