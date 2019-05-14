@@ -345,35 +345,62 @@ data:
         </io.fabric8.jenkins.openshiftsync.BuildConfigProjectProperty>
       </properties>
       <definition class="org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition" plugin="workflow-cps@2.61.1">
-        <script>def label = &quot;maven-testik&quot;
+        <script>def prefix          = &apos;cicd-&apos;
+    def acr_hostname    = &apos;lstestregistry.azurecr.io&apos;
+    def acr_secret_name = &apos;acrregistry&apos;
+    def maven_image     = &quot;${acr_hostname}/${prefix}jenkins/jenkins-agent-appdev&quot;
     
-    podTemplate(
-      label: label,
-      cloud: &apos;openshift&apos;,
-      envVars: [
-        envVar(
-          key: &apos;JENKINS_URL&apos;, value: &apos;http://cicd-jenkins.cicd-jenkins.svc.cluster.local:8080/&apos;
-        ),
-        envVar(
-          key: &apos;JENKINS_TUNNEL&apos;, value: &apos;cicd-jenkins-jnlp.cicd-jenkins.svc.cluster.local:50000&apos;
-        )
-      ],
-      containers: [
-        containerTemplate(
-          name: &apos;maven&apos;,
-          image: &apos;lstestregistry.azurecr.io/cicd-jenkins/jenkins-agent-appdev&apos;,
-          ttyEnabled: true,
-          command: &apos;cat&apos;)
-      ]
-    ) {
-      node(label) {
+    pipeline {
+      agent {
+        kubernetes {
+          label &apos;jenkins-maven-agent&apos;
+          cloud &apos;openshift&apos;
+          yaml &quot;&quot;&quot;
+    apiVersion: v1
+    kind: Pod
+    metadata:
+      labels:
+        pod: jenkins-maven-agent
+    spec:
+      imagePullSecrets:
+      - name: ${acr_secret_name}
+      containers:
+      - name: maven
+        image: ${maven_image}
+        command:
+        - cat
+        tty: true
+        securityContext:
+          runAsUser: 1001
+          allowPrivilegeEscalation: false
+      - name: jnlp
+        env:
+        - name: JENKINS_URL
+          value: &apos;http://${prefix}jenkins.${prefix}jenkins.svc.cluster.local:8080/&apos;
+        - name: JENKINS_TUNNEL
+          value: &apos;${prefix}jenkins-jnlp.${prefix}jenkins.svc.cluster.local:50000&apos;
+        securityContext:
+          runAsUser: 1001
+          allowPrivilegeEscalation: false
+    &quot;&quot;&quot;
+        }
+      }
+      
+      environment {
+        PATH = &apos;/opt/rh/rh-maven35/root/usr/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/gradle/bin&apos;
+      }
+      
+      stages {
         stage(&apos;Run maven&apos;) {
-          container(&apos;maven&apos;) {
-            sh &apos;mvn --version&apos;
+          steps {
+            container(&apos;maven&apos;) {
+              sh &apos;mvn --version&apos;
+            }
           }
         }
       }
-    }</script>
+    }
+    </script>
         <sandbox>true</sandbox>
       </definition>
       <triggers/>
