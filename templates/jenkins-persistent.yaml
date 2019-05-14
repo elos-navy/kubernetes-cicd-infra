@@ -345,10 +345,35 @@ data:
         </io.fabric8.jenkins.openshiftsync.BuildConfigProjectProperty>
       </properties>
       <definition class="org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition" plugin="workflow-cps@2.61.1">
-        <script>def prefix          = &apos;cicd-&apos;
+        <script>// Pipeline global variables/parameters
+    def prefix          = &apos;cicd-&apos;
     def acr_hostname    = &apos;lstestregistry.azurecr.io&apos;
     def acr_secret_name = &apos;acrregistry&apos;
     def maven_image     = &quot;${acr_hostname}/${prefix}jenkins/jenkins-agent-appdev&quot;
+    def git_repo_url    = &apos;https://github.com/elos-tech/openshift-cicd-app.git&apos;
+    
+    def sonarqube_url   = &quot;${prefix}sonarqube.${prefix}components.svc.cluster.local&quot;
+    def nexus_url       = &quot;${prefix}nexus3.${prefix}components.svc.cluster.local&quot;
+    
+    def mvnCmd          = &apos;mvn -s ./nexus_openshift_settings.xml&apos;
+    
+    
+    // Convenience Functions to read variables from the pom.xml
+    // Do not change anything below this line.
+    def getVersionFromPom(pom) {
+      def matcher = readFile(pom) =~ &apos;&lt;version&gt;(.+)&lt;/version&gt;&apos;
+      matcher ? matcher[0][1] : null
+    }
+    
+    def getGroupIdFromPom(pom) {
+      def matcher = readFile(pom) =~ &apos;&lt;groupId&gt;(.+)&lt;/groupId&gt;&apos;
+      matcher ? matcher[0][1] : null
+    }
+    
+    def getArtifactIdFromPom(pom) {
+      def matcher = readFile(pom) =~ &apos;&lt;artifactId&gt;(.+)&lt;/artifactId&gt;&apos;
+      matcher ? matcher[0][1] : null
+    }
     
     pipeline {
       agent {
@@ -382,19 +407,163 @@ data:
         securityContext:
           runAsUser: 1001
           allowPrivilegeEscalation: false
+      - name: kaniko
+        image: gcr.io/kaniko-project/executor:debug
+        imagePullPolicy: Always
+        command:
+        - /busybox/cat
+        tty: true
+        volumeMounts:
+          - name: jenkins-docker-cfg
+            mountPath: /kaniko/.docker
+      volumes:
+      - name: jenkins-docker-cfg
+        projected:
+          sources:
+          - secret:
+              name: ${acr_secret_name}
+              items:
+                - key: .dockerconfigjson
+                  path: config.json
     &quot;&quot;&quot;
         }
       }
       
       environment {
         PATH = &apos;/opt/rh/rh-maven35/root/usr/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/gradle/bin&apos;
+        
+        def groupId    = null
+        def artifactId = null
+        def version    = null
+        def devTag     = null
+        def prodTag    = null 
       }
       
       stages {
-        stage(&apos;Run maven&apos;) {
+        /*
+        stage(&apos;Check Environment&apos;) {
           steps {
             container(&apos;maven&apos;) {
               sh &apos;mvn --version&apos;
+              sh &apos;skopeo --version&apos;
+              sh &apos;kubectl version 2&gt;/dev/null || echo -n&apos;
+            }
+          }
+        }*/
+        
+        stage(&apos;Checkout SCM &apos;) {
+          steps {
+            container(&apos;maven&apos;) {
+              // Checkout code from SCM
+              checkout([
+                $class: &apos;GitSCM&apos;,
+                branches: [[name: &apos;*/master&apos;]],
+                doGenerateSubmoduleConfigurations: false,
+                extensions: [],
+                submoduleCfg: [],
+                userRemoteConfigs: [[url: git_repo_url]]])
+                    
+              // Set global variables according the code from SCM
+              script {
+                groupId    = getGroupIdFromPom(&quot;pom.xml&quot;)
+                artifactId = getArtifactIdFromPom(&quot;pom.xml&quot;)
+                version    = getVersionFromPom(&quot;pom.xml&quot;)
+                devTag     = &quot;${version}-${BUILD_NUMBER}&quot;
+                prodTag    = &quot;${version}&quot;
+              }
+              
+              sh &quot;sed -i &apos;s@&lt;url&gt;http://.*:@&lt;url&gt;http://${nexus_url}:@&apos; nexus_openshift_settings.xml&quot;
+            }
+          }
+        }
+        
+        /*
+        stage(&apos;Test Env Variables&apos;) {
+          steps {
+            container(&apos;maven&apos;) {
+              echo &quot;groupId ${groupId}&quot;
+              echo &quot;artifactId ${artifactId}&quot;
+              echo &quot;version ${version}&quot;
+            }
+          }
+        }
+        
+        stage(&apos;Compile Source Code&apos;) {
+          steps {
+            container(&apos;maven&apos;) {
+              echo &apos;Trying to compile application source code&apos;
+              sh &quot;${mvnCmd} clean package -DskipTests&quot;
+            }
+          }
+        }
+        
+        stage(&apos;Execute Unit Tests&apos;) {
+          steps {
+            container(&apos;maven&apos;) {
+              echo &apos;Running JUnit tests&apos;
+              sh &quot;${mvnCmd} test&quot;
+            }
+          }
+        }
+        
+        stage(&apos;Source Code Analysis&apos;) {
+          steps {
+            container(&apos;maven&apos;) {
+              echo &apos;Running Sonar scans&apos;
+              //sh &quot;${mvnCmd} sonar:sonar -Dsonar.host.url=http://${sonarqube_url}:9000 -Dsonar.projectName=${JOB_BASE_NAME} -Dsonar.projectVersion=${devTag}&quot;
+            }
+          }
+        }
+        
+        stage(&apos;Promote Binary Artifacts&apos;) {
+          steps {
+            container(&apos;maven&apos;) {
+              echo &quot;Publish to Nexus&quot;
+              sh &quot;${mvnCmd} deploy -DskipTests=true -DaltDeploymentRepository=nexus::default::http://${nexus_url}:8081/repository/releases&quot;
+            }
+          }
+        }*/
+       
+       /* 
+        stage(&apos;Build and Push Docker Image&apos;){
+          steps {
+            container(name: &apos;kaniko&apos;, shell: &apos;/busybox/sh&apos;) {
+               withEnv([&apos;PATH+EXTRA=/busybox&apos;]) {
+                 sh &quot;&quot;&quot;#!/busybox/sh
+                   set -x
+                   mkdir /workspace &amp;&amp; cd /workspace
+                   
+    cat &gt; /workspace/Dockerfile &lt;&lt; EOF
+    FROM tomcat
+    RUN wget http://${nexus_url}:8081/repository/releases/org/jboss/quickstarts/eap/tasks/${version}/tasks-${version}.war
+    RUN cp tasks-${version}.war /usr/local/tomcat/webapps/
+    EOF
+    
+                   /kaniko/executor \
+                     --context /workspace \
+                     --destination ${acr_hostname}/${prefix}jenkins/demo-app:${version}
+                 &quot;&quot;&quot;
+               }
+            }
+          }
+        }
+        */
+        
+        stage(&apos;Deploy Application into DEV&apos;) {
+          steps {
+            container(&apos;maven&apos;) {
+              echo &quot;Deploying container image to Development Project&quot;
+              
+              sh &quot;kubectl --namespace=cicd-tasks-dev delete configmap tasks-config --ignore-not-found=true&quot;
+              sh &quot;&quot;&quot;
+                kubectl --namespace=cicd-tasks-dev create configmap tasks-config \
+                  --from-file=./configuration/application-users.properties \
+                  --from-file=./configuration/application-roles.properties
+              &quot;&quot;&quot;
+    
+              sh &quot;kubectl --namespace=cicd-tasks-dev delete deployment tasks --ignore-not-found=true&quot;
+              sh &quot;kubectl --namespace=cicd-tasks-dev create deployment tasks --image=${acr_hostname}/${prefix}jenkins/demo-app:${version}&quot;
+              sh &quot;kubectl --namespace=cicd-tasks-dev patch deployment tasks -p &apos;{\&quot;spec\&quot;: {\&quot;template\&quot;: {\&quot;spec\&quot;: {\&quot;imagePullSecrets\&quot;: [{\&quot;name\&quot;: \&quot;${acr_secret_name}\&quot;}]}}}}&apos;&quot;
             }
           }
         }
