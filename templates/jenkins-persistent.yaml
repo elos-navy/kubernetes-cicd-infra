@@ -238,10 +238,20 @@ data:
       
       stage(&apos;Create DEV namespace&apos;) {
         create_from_template components_namespace, &quot;templates/tasks-dev-namespace.yaml _${prefix_label}_ $name_prefix&quot;
+        
+        sh &quot;&quot;&quot;
+          kubectl get secret acrregistry --namespace=${name_prefix}jenkins --export -o yaml |\
+          kubectl apply --namespace=${name_prefix}tasks-dev -f -
+        &quot;&quot;&quot;
       }
       
       stage(&apos;Create PROD namespace&apos;) {
         create_from_template components_namespace, &quot;templates/tasks-prod-namespace.yaml _${prefix_label}_ $name_prefix&quot;
+        
+        sh &quot;&quot;&quot;
+          kubectl get secret acrregistry --namespace=${name_prefix}jenkins --export -o yaml |\
+          kubectl apply --namespace=${name_prefix}tasks-prod -f -
+        &quot;&quot;&quot;
       }
     }
     
@@ -440,7 +450,6 @@ data:
       }
       
       stages {
-        /*
         stage(&apos;Check Environment&apos;) {
           steps {
             container(&apos;maven&apos;) {
@@ -449,7 +458,7 @@ data:
               sh &apos;kubectl version 2&gt;/dev/null || echo -n&apos;
             }
           }
-        }*/
+        }
         
         stage(&apos;Checkout SCM &apos;) {
           steps {
@@ -477,7 +486,6 @@ data:
           }
         }
         
-        /*
         stage(&apos;Test Env Variables&apos;) {
           steps {
             container(&apos;maven&apos;) {
@@ -522,9 +530,8 @@ data:
               sh &quot;${mvnCmd} deploy -DskipTests=true -DaltDeploymentRepository=nexus::default::http://${nexus_url}:8081/repository/releases&quot;
             }
           }
-        }*/
+        }
        
-       /* 
         stage(&apos;Build and Push Docker Image&apos;){
           steps {
             container(name: &apos;kaniko&apos;, shell: &apos;/busybox/sh&apos;) {
@@ -534,39 +541,61 @@ data:
                    mkdir /workspace &amp;&amp; cd /workspace
                    
     cat &gt; /workspace/Dockerfile &lt;&lt; EOF
-    FROM tomcat
-    RUN wget http://${nexus_url}:8081/repository/releases/org/jboss/quickstarts/eap/tasks/${version}/tasks-${version}.war
-    RUN cp tasks-${version}.war /usr/local/tomcat/webapps/
+    FROM jboss/wildfly:latest
+    RUN curl http://${nexus_url}:8081/repository/releases/org/jboss/quickstarts/eap/tasks/${version}/tasks-${version}.war \
+          --output /opt/jboss/wildfly/standalone/deployments/tasks-${version}.war
     EOF
     
                    /kaniko/executor \
                      --context /workspace \
-                     --destination ${acr_hostname}/${prefix}jenkins/demo-app:${version}
+                     --destination ${acr_hostname}/${prefix}jenkins/tasks:${version}
                  &quot;&quot;&quot;
                }
             }
           }
         }
-        */
         
         stage(&apos;Deploy Application into DEV&apos;) {
           steps {
             container(&apos;maven&apos;) {
               echo &quot;Deploying container image to Development Project&quot;
               
-              sh &quot;kubectl --namespace=cicd-tasks-dev delete configmap tasks-config --ignore-not-found=true&quot;
+              sh &quot;kubectl --namespace=cicd-tasks-dev delete all,configmap,replicaset --all --ignore-not-found=true&quot;
+              
               sh &quot;&quot;&quot;
                 kubectl --namespace=cicd-tasks-dev create configmap tasks-config \
                   --from-file=./configuration/application-users.properties \
                   --from-file=./configuration/application-roles.properties
               &quot;&quot;&quot;
-    
-              sh &quot;kubectl --namespace=cicd-tasks-dev delete deployment tasks --ignore-not-found=true&quot;
-              sh &quot;kubectl --namespace=cicd-tasks-dev create deployment tasks --image=${acr_hostname}/${prefix}jenkins/demo-app:${version}&quot;
+              sh &quot;kubectl --namespace=cicd-tasks-dev run tasks --image=${acr_hostname}/${prefix}jenkins/tasks:${version} --replicas=1 --port=8080&quot;
+              //sh &quot;kubectl --namespace=cicd-tasks-dev create deployment tasks --image=${acr_hostname}/${prefix}jenkins/demo-app:${version}&quot;
               sh &quot;kubectl --namespace=cicd-tasks-dev patch deployment tasks -p &apos;{\&quot;spec\&quot;: {\&quot;template\&quot;: {\&quot;spec\&quot;: {\&quot;imagePullSecrets\&quot;: [{\&quot;name\&quot;: \&quot;${acr_secret_name}\&quot;}]}}}}&apos;&quot;
+              sh &quot;kubectl --namespace=cicd-tasks-dev expose deployment tasks --type=LoadBalancer --name=tasks --port=8080&quot;
             }
           }
         }
+        
+        /*
+        stage(&apos;Perform Integration Tests&apos;) {
+          steps {
+            container(&apos;maven&apos;) {
+              echo &quot;Running Integration Tests&quot;
+              sleep 30
+              
+              // Create a new task called &quot;integration_test_1&quot;
+              echo &quot;Creating task&quot;
+              sh &quot;curl -i -f -u &apos;tasks:redhat1&apos; -H &apos;Content-Length: 0&apos; -X POST http://tasks.cicd-tasks-dev.svc.cluster.local:8080/ws/tasks/integration_test_1&quot;
+    
+              // Retrieve task with id &quot;1&quot;
+              echo &quot;Retrieving tasks&quot;
+              sh &quot;curl -i -f -u &apos;tasks:redhat1&apos; -H &apos;Content-Length: 0&apos; -X GET http://tasks.cicd-tasks-dev.svc.cluster.local:8080/ws/tasks/1&quot;
+    
+              // Delete task with id &quot;1&quot;
+              echo &quot;Deleting tasks&quot;
+              sh &quot;curl -i -f -u &apos;tasks:redhat1&apos; -H &apos;Content-Length: 0&apos; -X DELETE http://tasks.cicd-tasks-dev.svc.cluster.local:8080/ws/tasks/1&quot;
+            }
+          }
+        }*/
       }
     }
     </script>
