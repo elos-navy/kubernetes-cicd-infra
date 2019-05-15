@@ -14,7 +14,7 @@ function create_cluster {
   az aks create \
     --resource-group $RESOURCE_GROUP \
     --name $CLUSTER_NAME \
-    --node-count 1 \
+    --node-count 2 \
     --enable-addons http_application_routing \
     --generate-ssh-keys
 }
