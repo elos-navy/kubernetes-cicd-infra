@@ -237,7 +237,7 @@ data:
       }
       
       stage(&apos;Create DEV namespace&apos;) {
-        create_from_template components_namespace, &quot;templates/tasks-dev-namespace.yaml _${prefix_label}_ $name_prefix&quot;
+        create_from_template &apos;&apos;, &quot;templates/tasks-dev-namespace.yaml _${prefix_label}_ $name_prefix&quot;
         
         sh &quot;&quot;&quot;
           kubectl get secret acrregistry --namespace=${name_prefix}jenkins --export -o yaml |\
@@ -246,7 +246,7 @@ data:
       }
       
       stage(&apos;Create PROD namespace&apos;) {
-        create_from_template components_namespace, &quot;templates/tasks-prod-namespace.yaml _${prefix_label}_ $name_prefix&quot;
+        create_from_template &apos;&apos;, &quot;templates/tasks-prod-namespace.yaml _${prefix_label}_ $name_prefix&quot;
         
         sh &quot;&quot;&quot;
           kubectl get secret acrregistry --namespace=${name_prefix}jenkins --export -o yaml |\
@@ -295,7 +295,11 @@ data:
             shift
           done
     
-          kubectl --namespace $namespace create -f &quot;\${TMP_DIR}/\$(basename \$FILE)&quot;
+          if [ &quot;$namespace&quot; == &quot;&quot; ]; then
+            kubectl create -f &quot;\${TMP_DIR}/\$(basename \$FILE)&quot;
+          else
+            kubectl --namespace $namespace create -f &quot;\${TMP_DIR}/\$(basename \$FILE)&quot;
+          fi
           set +x
         }
         
