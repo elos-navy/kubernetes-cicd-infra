@@ -6,3 +6,45 @@ metadata:
 spec:
   finalizers:
   - kubernetes
+---
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+  namespace: _PREFIX_tasks-prod
+  name: jenkins-agent
+rules:
+- apiGroups: ["","apps"]
+  resources: ["pods","secrets","configmaps","endpoints","replicationcontrollers","services","persistentvolumeclaims","daemonsets","deployments","replicasets","replicasets/scale","statefulsets","jobs","crontabs"]
+  verbs: ["create","delete","get","list","patch","update","watch"]
+- apiGroups: ["extensions"]
+  resources: ["deployments","replicasets","replicasets/scale"]
+  verbs: ["get","create","delete","update","list","patch"]
+- apiGroups: ["autoscaling"]
+  resources: ["horizontalpodautoscalers"]
+  verbs: ["create","delete","get","list","patch","update","watch"]
+- apiGroups: ["batch"]
+  resources: ["jobs","cronjobs"]
+  verbs: ["create","delete","get","list","patch","update","watch"]
+- apiGroups: [""]
+  resources: ["pods/exec"]
+  verbs: ["create","delete","get","list","patch","update","watch"]
+- apiGroups: [""]
+  resources: ["pods/log"]
+  verbs: ["get","list","watch"]
+- apiGroups: [""]
+  resources: ["secrets"]
+  verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: RoleBinding
+metadata:
+  namespace: _PREFIX_tasks-prod
+  name: jenkins-agent
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: jenkins-agent
+subjects:
+- kind: ServiceAccount
+  name: default
+  namespace: _PREFIX_jenkins
