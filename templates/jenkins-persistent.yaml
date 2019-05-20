@@ -360,16 +360,23 @@ data:
       </properties>
       <definition class="org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition" plugin="workflow-cps@2.61.1">
         <script>// Pipeline global variables/parameters
-    def prefix          = &apos;cicd-&apos;
-    def acr_hostname    = &apos;lstestregistry.azurecr.io&apos;
-    def acr_secret_name = &apos;acrregistry&apos;
-    def maven_image     = &quot;${acr_hostname}/${prefix}jenkins/jenkins-agent-appdev&quot;
-    def git_repo_url    = &apos;https://github.com/elos-tech/openshift-cicd-app.git&apos;
+    def prefix               = &apos;cicd-&apos;
+    def acr_hostname         = &apos;lstestregistry.azurecr.io&apos;
+    def acr_secret_name      = &apos;acrregistry&apos;
+    def maven_image          = &quot;${acr_hostname}/${prefix}jenkins/jenkins-agent-appdev&quot;
+    def git_repo_url         = &apos;https://github.com/elos-tech/openshift-cicd-app.git&apos;
     
-    def sonarqube_url   = &quot;${prefix}sonarqube.${prefix}components.svc.cluster.local&quot;
-    def nexus_url       = &quot;${prefix}nexus3.${prefix}components.svc.cluster.local&quot;
+    def jenkins_namespace    = &quot;${prefix}jenkins&quot;
+    def components_namespace = &quot;${prefix}components&quot;
+    def tasks_dev_namespace  = &quot;${prefix}tasks-dev&quot;
+    def tasks_prod_namespace = &quot;${prefix}tasks-prod&quot;
     
-    def mvnCmd          = &apos;mvn -s ./nexus_openshift_settings.xml&apos;
+    def sonarqube_url        = &quot;${prefix}sonarqube.${prefix}components.svc.cluster.local&quot;
+    def nexus_url            = &quot;http://${prefix}nexus3.${prefix}components.svc.cluster.local:8081&quot;
+    def tasks_dev_url        = &quot;http://tasks.${tasks_dev_namespace}.svc.cluster.local:8080&quot;
+    def tasks_prod_url       = &quot;http://tasks.${tasks_prod_namespace}.svc.cluster.local:8080&quot;
+    
+    def mvnCmd               = &apos;mvn -s ./nexus_openshift_settings.xml&apos;
     
     
     // Convenience Functions to read variables from the pom.xml
@@ -485,7 +492,7 @@ data:
                 prodTag    = &quot;${version}&quot;
               }
               
-              sh &quot;sed -i &apos;s@&lt;url&gt;http://.*:@&lt;url&gt;http://${nexus_url}:@&apos; nexus_openshift_settings.xml&quot;
+              sh &quot;sed -i &apos;s@&lt;url&gt;http://.*:8081@&lt;url&gt;${nexus_url}@&apos; nexus_openshift_settings.xml&quot;
             }
           }
         }
@@ -531,7 +538,7 @@ data:
           steps {
             container(&apos;maven&apos;) {
               echo &quot;Publish to Nexus&quot;
-              sh &quot;${mvnCmd} deploy -DskipTests=true -DaltDeploymentRepository=nexus::default::http://${nexus_url}:8081/repository/releases&quot;
+              sh &quot;${mvnCmd} deploy -DskipTests=true -DaltDeploymentRepository=nexus::default::${nexus_url}/repository/releases&quot;
             }
           }
         }
@@ -546,8 +553,12 @@ data:
                    
     cat &gt; /workspace/Dockerfile &lt;&lt; EOF
     FROM jboss/wildfly:latest
-    RUN curl http://${nexus_url}:8081/repository/releases/org/jboss/quickstarts/eap/tasks/${version}/tasks-${version}.war \
+    RUN curl ${nexus_url}/repository/releases/org/jboss/quickstarts/eap/tasks/${version}/tasks-${version}.war \
           --output /opt/jboss/wildfly/standalone/deployments/tasks-${version}.war
+    RUN mkdir -p /opt/jboss/configuration &amp;&amp; \
+        mv /opt/jboss/wildfly/standalone/configuration/application-*properties /opt/jboss/configuration &amp;&amp; \
+        ln -s /opt/jboss/configuration/application-roles.properties /opt/jboss/wildfly/standalone/configuration/application-roles.properties &amp;&amp; \
+        ln -s /opt/jboss/configuration/application-users.properties /opt/jboss/wildfly/standalone/configuration/application-users.properties
     EOF
     
                    /kaniko/executor \
@@ -564,45 +575,133 @@ data:
             container(&apos;maven&apos;) {
               echo &quot;Deploying container image to Development Project&quot;
               
-              sh &quot;kubectl --namespace=cicd-tasks-dev delete all,configmap,replicaset --all --ignore-not-found=true&quot;
+              sh &quot;kubectl --namespace=${tasks_dev_namespace} delete all,configmap,replicaset --all --ignore-not-found=true&quot;
               
               sh &quot;&quot;&quot;
-                kubectl --namespace=cicd-tasks-dev create configmap tasks-config \
+                kubectl --namespace=${tasks_dev_namespace} create configmap tasks-config \
                   --from-file=./configuration/application-users.properties \
                   --from-file=./configuration/application-roles.properties
               &quot;&quot;&quot;
-              sh &quot;kubectl --namespace=cicd-tasks-dev run tasks --image=${acr_hostname}/${prefix}jenkins/tasks:${version} --replicas=1 --port=8080&quot;
-              //sh &quot;kubectl --namespace=cicd-tasks-dev create deployment tasks --image=${acr_hostname}/${prefix}jenkins/demo-app:${version}&quot;
-              sh &quot;kubectl --namespace=cicd-tasks-dev patch deployment tasks -p &apos;{\&quot;spec\&quot;: {\&quot;template\&quot;: {\&quot;spec\&quot;: {\&quot;imagePullSecrets\&quot;: [{\&quot;name\&quot;: \&quot;${acr_secret_name}\&quot;}]}}}}&apos;&quot;
-              sh &quot;kubectl --namespace=cicd-tasks-dev expose deployment tasks --type=LoadBalancer --name=tasks --port=8080&quot;
+              
+              create_from_template(tasks_dev_namespace, &quot;&quot;&quot;k8s_templates/tasks-app.yaml \
+                _PREFIX_ ${prefix} \
+                _REGISTRY_SECRET_NAME_ ${acr_secret_name} \
+                _IMAGE_ ${acr_hostname}/${prefix}jenkins/tasks:${version}
+              &quot;&quot;&quot;)
+              
+              //sh &quot;kubectl --namespace=${tasks_dev_namespace} run tasks --image=${acr_hostname}/${prefix}jenkins/tasks:${version} --replicas=1 --port=8080&quot;
+              //sh &quot;kubectl --namespace=${tasks_dev_namespace} patch deployment tasks -p &apos;{\&quot;spec\&quot;: {\&quot;template\&quot;: {\&quot;spec\&quot;: {\&quot;imagePullSecrets\&quot;: [{\&quot;name\&quot;: \&quot;${acr_secret_name}\&quot;}]}}}}&apos;&quot;
+              //sh &quot;kubectl --namespace=${tasks_dev_namespace} expose deployment tasks --type=LoadBalancer --name=tasks --port=8080&quot;
+              //sh &quot;kubectl --namespace=${tasks_dev_namespace} expose deployment tasks --type=ClusterIP --name=tasks --port=8080&quot;
             }
           }
         }
         
-        /*
         stage(&apos;Perform Integration Tests&apos;) {
           steps {
             container(&apos;maven&apos;) {
               echo &quot;Running Integration Tests&quot;
-              sleep 30
+              //sleep 30
+              wait_for_deployment_ready(tasks_dev_namespace, &apos;tasks&apos;)
               
+              /*
               // Create a new task called &quot;integration_test_1&quot;
               echo &quot;Creating task&quot;
-              sh &quot;curl -i -f -u &apos;tasks:redhat1&apos; -H &apos;Content-Length: 0&apos; -X POST http://tasks.cicd-tasks-dev.svc.cluster.local:8080/ws/tasks/integration_test_1&quot;
+              sh &quot;curl -i -f -u &apos;tasks:redhat1&apos; -H &apos;Content-Length: 0&apos; -X POST ${tasks_dev_url}/ws/tasks/integration_test_1&quot;
     
               // Retrieve task with id &quot;1&quot;
               echo &quot;Retrieving tasks&quot;
-              sh &quot;curl -i -f -u &apos;tasks:redhat1&apos; -H &apos;Content-Length: 0&apos; -X GET http://tasks.cicd-tasks-dev.svc.cluster.local:8080/ws/tasks/1&quot;
+              sh &quot;curl -i -f -u &apos;tasks:redhat1&apos; -H &apos;Content-Length: 0&apos; -X GET ${tasks_dev_url}/ws/tasks/1&quot;
     
               // Delete task with id &quot;1&quot;
               echo &quot;Deleting tasks&quot;
-              sh &quot;curl -i -f -u &apos;tasks:redhat1&apos; -H &apos;Content-Length: 0&apos; -X DELETE http://tasks.cicd-tasks-dev.svc.cluster.local:8080/ws/tasks/1&quot;
+              sh &quot;curl -i -f -u &apos;tasks:redhat1&apos; -H &apos;Content-Length: 0&apos; -X DELETE ${tasks_dev_url}/ws/tasks/1&quot;
+              */
             }
           }
-        }*/
+        }
+        
+        stage(&apos;Deploy Application into PROD&apos;) {
+          steps {
+            container(&apos;maven&apos;) {
+              echo &quot;Deploying container image to Production Project&quot;
+              
+              sh &quot;kubectl --namespace=${tasks_prod_namespace} delete all,configmap,replicaset --all --ignore-not-found=true&quot;
+              
+              sh &quot;&quot;&quot;
+                kubectl --namespace=${tasks_prod_namespace} create configmap tasks-config \
+                  --from-file=./configuration/application-users.properties \
+                  --from-file=./configuration/application-roles.properties
+              &quot;&quot;&quot;
+              
+              create_from_template(tasks_prod_namespace, &quot;&quot;&quot;k8s_templates/tasks-app.yaml \
+                _PREFIX_ ${prefix} \
+                _REGISTRY_SECRET_NAME_ ${acr_secret_name} \
+                _IMAGE_ ${acr_hostname}/${prefix}jenkins/tasks:${version}
+              &quot;&quot;&quot;)
+            }
+          }
+        }
       }
     }
-    </script>
+    
+    def get_pod_name(namespace, app_name) {
+      return sh (
+        script: &quot;kubectl --namespace $namespace get pod | grep &apos;^$app_name&apos; | awk &apos;{ print \$1 }&apos;&quot;,
+        returnStdout: true
+      ).trim()
+    }
+    
+    def create_from_template(namespace, request) {
+      sh &quot;&quot;&quot;
+        TMP_DIR=\$(mktemp -d)
+    
+        function create_from_template {
+          FILE=\$1; shift
+    
+          if [ ! -f &quot;\$FILE&quot; ]; then
+            echo &quot;ERROR: File &apos;\$FILE&apos; doesn&apos;t exist!&quot;
+            exit 1
+          fi
+    
+          set -x
+          cp \$FILE &quot;\${TMP_DIR}/\$(basename \$FILE)&quot;
+    
+          while (( &quot;\$#&quot; )); do
+            #echo &quot;Replacing parameter: \$1 -&gt; \$2&quot;
+            sed -i &apos;s@&apos;\$1&apos;@&apos;\$2&apos;@g&apos; &quot;\${TMP_DIR}/\$(basename \$FILE)&quot;
+            shift
+            shift
+          done
+    
+          if [ &quot;$namespace&quot; == &quot;&quot; ]; then
+            kubectl create -f &quot;\${TMP_DIR}/\$(basename \$FILE)&quot;
+          else
+            kubectl --namespace $namespace create -f &quot;\${TMP_DIR}/\$(basename \$FILE)&quot;
+          fi
+          set +x
+        }
+        
+        create_from_template $request
+    
+        rm -rf \$TMP_DIR
+      &quot;&quot;&quot;
+    }
+    
+    def wait_for_deployment_ready(namespace, deployment) {
+      sh &quot;&quot;&quot;
+        while true;
+        do
+          READY=\$(kubectl --namespace $namespace get deployment $deployment --no-headers | awk &apos;{ print \$5}&apos;)
+          echo \$READY
+          if [ \$READY -ge 1 ]; then
+            break
+          fi
+          
+          sleep 10
+        done
+      &quot;&quot;&quot;
+    }</script>
         <sandbox>true</sandbox>
       </definition>
       <triggers/>
