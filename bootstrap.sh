@@ -17,6 +17,9 @@ do
       APPLICATION_GIT_URL="$1"
       shift
       ;;
+    --registry_name)
+      REGISTRY_NAME="$1"
+      ;;
     *)
       echo "ERROR: Unknown argument '$KEY' to script '$0'" 1>&2
       exit 1
@@ -63,9 +66,11 @@ kubectl config set-context $(kubectl config current-context) --namespace=${PREFI
 create_from_template templates/jenkins-persistent.yaml \
   _PREFIX_ $PREFIX \
   _JENKINS_ADMIN_PASSWORD_ "$JENKINS_ADMIN_PASSWORD" \
+  _APPLICATION_GIT_URL_ "$APPLICATION_GIT_URL" \
+  _REGISTRY_NAME_ "$REGISTRY_NAME" \
+  _REGISTRY_SECRET_NAME_ "$REGISTRY_SECRET_NAME" \
   _COMPONENTS_PIPELINE_JOB_NAME_ 'cicd-components-pipeline' \
-  _APP_PIPELINE_JOB_NAME_ 'cicd-app-pipeline' \
-  _APPLICATION_GIT_URL_ "$APPLICATION_GIT_URL"
+  _APP_PIPELINE_JOB_NAME_ 'cicd-app-pipeline'
 
 
 # Build and push Jenkins agent POD to ACR registry
@@ -77,7 +82,7 @@ ACR_CREDENTIALS=$(az acr credential show -n $REGISTRY_NAME)
 ACR_USERNAME=$(echo $ACR_CREDENTIALS | jq '.username' | sed 's/"//g')
 ACR_PASSWORD=$(echo $ACR_CREDENTIALS | jq '.passwords[0].value' | sed 's/"//g')
 ACR_HOSTNAME=$(az acr show -n $REGISTRY_NAME | jq '.loginServer' | sed 's/"//g')
-kubectl create secret docker-registry acrregistry \
+kubectl create secret docker-registry $REGISTRY_SECRET_NAME \
     --docker-server=$ACR_HOSTNAME \
     --docker-username=$ACR_USERNAME \
     --docker-password=$ACR_PASSWORD \

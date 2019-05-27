@@ -244,7 +244,7 @@ data:
         create_from_template &apos;&apos;, &quot;templates/tasks-dev-namespace.yaml _${prefix_label}_ $name_prefix&quot;
         
         sh &quot;&quot;&quot;
-          kubectl get secret acrregistry --namespace=${name_prefix}jenkins --export -o yaml |\
+          kubectl get secret _REGISTRY_SECRET_NAME_ --namespace=${name_prefix}jenkins --export -o yaml |\
           kubectl apply --namespace=${name_prefix}tasks-dev -f -
         &quot;&quot;&quot;
       }
@@ -253,7 +253,7 @@ data:
         create_from_template &apos;&apos;, &quot;templates/tasks-prod-namespace.yaml _${prefix_label}_ $name_prefix&quot;
         
         sh &quot;&quot;&quot;
-          kubectl get secret acrregistry --namespace=${name_prefix}jenkins --export -o yaml |\
+          kubectl get secret _REGISTRY_SECRET_NAME_ --namespace=${name_prefix}jenkins --export -o yaml |\
           kubectl apply --namespace=${name_prefix}tasks-prod -f -
         &quot;&quot;&quot;
       }
@@ -369,8 +369,8 @@ data:
       <definition class="org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition" plugin="workflow-cps@2.61.1">
         <script>// Pipeline global variables/parameters
     def prefix               = &apos;_PREFIX_&apos;
-    def acr_hostname         = &apos;lstestregistry.azurecr.io&apos;
-    def acr_secret_name      = &apos;acrregistry&apos;
+    def acr_hostname         = &apos;_REGISTRY_NAME_.azurecr.io&apos;
+    def acr_secret_name      = &apos;_REGISTRY_SECRET_NAME_&apos;
     def maven_image          = &quot;${acr_hostname}/${prefix}jenkins/jenkins-agent-appdev&quot;
     def git_repo_url         = &apos;_APPLICATION_GIT_URL_&apos;
     

@@ -1,14 +1,22 @@
-CLUSTER_NAME='ls-test-cluster'
+### Pipeline settings
+PREFIX='cicd-'
+JENKINS_ADMIN_PASSWORD='admin'
+APPLICATION_GIT_URL='https://github.com/elos-tech/openshift-cicd-app.git'
 
+
+### ACR Registry
 # 'registry_name' must conform to the following pattern: '^[a-zA-Z0-9]*$'
-REGISTRY_NAME='lstestregistry'
+REGISTRY_NAME='elos-test-registry'
 
+# Kubernetes secret name. This secret is used for ACR authentication.
+REGISTRY_SECRET_NAME='acr_secret'
+
+
+### AKS cluster
+CLUSTER_NAME='ls-test-cluster'
 STORAGE_ACCOUNT_NAME='lsstorageaccount'
 LOCATION='westeurope'
 RESOURCE_GROUP='ls-test-rg'
 SHADOW_RESOURCE_GROUP="MC_${RESOURCE_GROUP}_${CLUSTER_NAME}_${LOCATION}"
 
-PREFIX='cicd-'
 
-JENKINS_ADMIN_PASSWORD='admin'
-APPLICATION_GIT_URL='https://github.com/elos-tech/openshift-cicd-app.git'
