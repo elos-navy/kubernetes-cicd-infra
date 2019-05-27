@@ -182,7 +182,7 @@ data:
         <script>#!groovy
     
     def source_git_repo      = &apos;https://github.com/elos-tech/kubernetes-cicd-infra.git&apos;
-    def name_prefix          = &apos;cicd-&apos;
+    def name_prefix          = &apos;_PREFIX_&apos;
     def prefix_label         = &apos;PREFIX&apos; // Helper variable for prefix substitution with double sed-ed templates.
     def jenkins_namespace    = &quot;${name_prefix}jenkins&quot;
     def components_namespace = &quot;${name_prefix}components&quot;
@@ -211,12 +211,12 @@ data:
         // Initialize Nexus
         def pod_name = get_pod_name(components_namespace, &quot;${name_prefix}nexus3&quot;)
         sh &quot;&quot;&quot;
-          kubectl --namespace cicd-components cp artefacts/setup_nexus3.sh $pod_name:/tmp/
+          kubectl --namespace ${components_namespace} cp artefacts/setup_nexus3.sh $pod_name:/tmp/
           
           FAILED=0
           while true
           do
-            kubectl --namespace cicd-components exec $pod_name -- /bin/bash /tmp/setup_nexus3.sh admin admin123 http://localhost:8081 || FAILED=1
+            kubectl --namespace ${components_namespace} exec $pod_name -- /bin/bash /tmp/setup_nexus3.sh admin admin123 http://localhost:8081 || FAILED=1
             [ \$FAILED -eq 0 ] &amp;&amp; break
             FAILED=0
             sleep 10
@@ -256,6 +256,10 @@ data:
           kubectl get secret acrregistry --namespace=${name_prefix}jenkins --export -o yaml |\
           kubectl apply --namespace=${name_prefix}tasks-prod -f -
         &quot;&quot;&quot;
+      }
+      
+      stage(&apos;Start Application Pipeline&apos;) {
+        build job: &quot;_APP_PIPELINE_JOB_NAME_&quot;, wait: false
       }
     }
     
@@ -364,7 +368,7 @@ data:
       </properties>
       <definition class="org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition" plugin="workflow-cps@2.61.1">
         <script>// Pipeline global variables/parameters
-    def prefix               = &apos;cicd-&apos;
+    def prefix               = &apos;_PREFIX_&apos;
     def acr_hostname         = &apos;lstestregistry.azurecr.io&apos;
     def acr_secret_name      = &apos;acrregistry&apos;
     def maven_image          = &quot;${acr_hostname}/${prefix}jenkins/jenkins-agent-appdev&quot;
