@@ -45,10 +45,14 @@ spec:
         - name: JAVA_OPTS
           value: "-Djenkins.install.runSetupWizard=false"
         - name: JENKINS_PASSWORD
-          value: "admin"
+          value: "_JENKINS_ADMIN_PASSWORD_"
         volumeMounts:
         - mountPath: /var/lib/jenkins
           name: jenkins-data
+        lifecycle:
+          postStart:
+            exec:
+              command: ["/bin/sh", "-c", "while true; do if curl -f localhost:8080/login &> /dev/null ; then curl -X POST localhost:8080/job/_COMPONENTS_PIPELINE_JOB_NAME_/build --user admin:_JENKINS_ADMIN_PASSWORD_; break; else sleep 5; fi; done"]
       initContainers:
       - name: setup-permissions
         image: alpine:latest
@@ -75,7 +79,7 @@ spec:
         command:
           - /bin/sh
           - -c
-          - mkdir -p /var/lib/jenkins/jobs/cicd-components-pipeline/builds; cd /var/lib/jenkins/jobs/cicd-components-pipeline/builds; touch legacyIds; ln -s ./-1 lastFailedBuild; ln -s ./-1 lastStableBuild; ln -s ./-1 lastSuccessfulBuild; ln -s ./-1 lastUnstableBuild; ln -s ./-1 lastUnsuccessfulBuild; cp /mnt/config.xml /var/lib/jenkins/jobs/cicd-components-pipeline/
+          - mkdir -p /var/lib/jenkins/jobs/_COMPONENTS_PIPELINE_JOB_NAME_/builds; cd /var/lib/jenkins/jobs/_COMPONENTS_PIPELINE_JOB_NAME_/builds; touch legacyIds; ln -s ./-1 lastFailedBuild; ln -s ./-1 lastStableBuild; ln -s ./-1 lastSuccessfulBuild; ln -s ./-1 lastUnstableBuild; ln -s ./-1 lastUnsuccessfulBuild; cp /mnt/config.xml /var/lib/jenkins/jobs/_COMPONENTS_PIPELINE_JOB_NAME_/
         volumeMounts:
         - mountPath: /var/lib/jenkins
           name: jenkins-data
@@ -86,7 +90,7 @@ spec:
         command:
           - /bin/sh
           - -c
-          - mkdir -p /var/lib/jenkins/jobs/cicd-app-pipeline/builds; cd /var/lib/jenkins/jobs/cicd-app-pipeline/builds; touch legacyIds; ln -s ./-1 lastFailedBuild; ln -s ./-1 lastStableBuild; ln -s ./-1 lastSuccessfulBuild; ln -s ./-1 lastUnstableBuild; ln -s ./-1 lastUnsuccessfulBuild; cp /mnt/config.xml /var/lib/jenkins/jobs/cicd-app-pipeline/
+          - mkdir -p /var/lib/jenkins/jobs/_APP_PIPELINE_JOB_NAME_/builds; cd /var/lib/jenkins/jobs/_APP_PIPELINE_JOB_NAME_/builds; touch legacyIds; ln -s ./-1 lastFailedBuild; ln -s ./-1 lastStableBuild; ln -s ./-1 lastSuccessfulBuild; ln -s ./-1 lastUnstableBuild; ln -s ./-1 lastUnsuccessfulBuild; cp /mnt/config.xml /var/lib/jenkins/jobs/_APP_PIPELINE_JOB_NAME_/
         volumeMounts:
         - mountPath: /var/lib/jenkins
           name: jenkins-data

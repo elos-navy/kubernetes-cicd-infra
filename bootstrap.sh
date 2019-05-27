@@ -41,7 +41,10 @@ kubectl config set-context $(kubectl config current-context) --namespace=${PREFI
 
 # Jenkins
 create_from_template templates/jenkins-persistent.yaml \
-  _PREFIX_ $PREFIX
+  _PREFIX_ $PREFIX \
+  _JENKINS_ADMIN_PASSWORD_ 'admin123' \
+  _COMPONENTS_PIPELINE_JOB_NAME_ 'cicd-components-pipeline' \
+  _APP_PIPELINE_JOB_NAME_ 'cicd-app-pipeline'
 
 
 # Build and push Jenkins agent POD to ACR registry
