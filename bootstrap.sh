@@ -6,7 +6,7 @@ TMP_DIR=$(mktemp -d)
 
 while [[ $# > 0 ]]
 do
-  KET="$1"
+  KEY="$1"
   shift
   case "$KEY" in
     --jenkins_admin_password)
@@ -19,6 +19,7 @@ do
       ;;
     --registry_name)
       REGISTRY_NAME="$1"
+      shift
       ;;
     *)
       echo "ERROR: Unknown argument '$KEY' to script '$0'" 1>&2
