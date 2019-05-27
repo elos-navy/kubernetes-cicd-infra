@@ -4,6 +4,26 @@ source ./config
 
 TMP_DIR=$(mktemp -d)
 
+while [[ $# > 0 ]]
+do
+  KET="$1"
+  shift
+  case "$KEY" in
+    --jenkins_admin_password)
+      JENKINS_ADMIN_PASSWORD="$1"
+      shift
+      ;;
+    --application_git_url)
+      APPLICATION_GIT_URL="$1"
+      shift
+      ;;
+    *)
+      echo "ERROR: Unknown argument '$KEY' to script '$0'" 1>&2
+      exit 1
+  esac
+done
+
+
 function create_from_template {
   FILE=$1; shift
 
@@ -42,9 +62,10 @@ kubectl config set-context $(kubectl config current-context) --namespace=${PREFI
 # Jenkins
 create_from_template templates/jenkins-persistent.yaml \
   _PREFIX_ $PREFIX \
-  _JENKINS_ADMIN_PASSWORD_ 'admin123' \
+  _JENKINS_ADMIN_PASSWORD_ "$JENKINS_ADMIN_PASSWORD" \
   _COMPONENTS_PIPELINE_JOB_NAME_ 'cicd-components-pipeline' \
-  _APP_PIPELINE_JOB_NAME_ 'cicd-app-pipeline'
+  _APP_PIPELINE_JOB_NAME_ 'cicd-app-pipeline' \
+  _APPLICATION_GIT_URL_ "$APPLICATION_GIT_URL"
 
 
 # Build and push Jenkins agent POD to ACR registry

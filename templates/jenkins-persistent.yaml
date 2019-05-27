@@ -372,7 +372,7 @@ data:
     def acr_hostname         = &apos;lstestregistry.azurecr.io&apos;
     def acr_secret_name      = &apos;acrregistry&apos;
     def maven_image          = &quot;${acr_hostname}/${prefix}jenkins/jenkins-agent-appdev&quot;
-    def git_repo_url         = &apos;https://github.com/elos-tech/openshift-cicd-app.git&apos;
+    def git_repo_url         = &apos;_APPLICATION_GIT_URL_&apos;
     
     def jenkins_namespace    = &quot;${prefix}jenkins&quot;
     def components_namespace = &quot;${prefix}components&quot;

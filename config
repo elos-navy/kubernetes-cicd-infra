@@ -10,3 +10,5 @@ SHADOW_RESOURCE_GROUP="MC_${RESOURCE_GROUP}_${CLUSTER_NAME}_${LOCATION}"
 
 PREFIX='cicd-'
 
+JENKINS_ADMIN_PASSWORD='admin'
+APPLICATION_GIT_URL='https://github.com/elos-tech/openshift-cicd-app.git'
