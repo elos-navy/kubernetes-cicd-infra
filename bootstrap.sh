@@ -22,10 +22,6 @@ do
       REGISTRY_NAME="$1"
       shift
       ;;
-    --app_dns_domain)
-      APP_DNS_DOMAIN="$1"
-      shift
-      ;;
     *)
       echo "ERROR: Unknown argument '$KEY' to script '$0'" 1>&2
       exit 1
@@ -33,10 +29,8 @@ do
 done
 
 set -x
-echo $APP_DNS_DOMAIN
-echo $APP_DNS_DOMAIN > /tmp/blah
 
-enable_routing_part_1
+#enable_routing_part_1
 #enable_routing_part_2
 exit 0
 
@@ -63,10 +57,11 @@ create_from_template templates/jenkins-persistent.yaml \
   _APP_PIPELINE_JOB_NAME_ 'cicd-app-pipeline'
 
 create_from_template templates/ingress/ingress.yaml \
-  _DNS_NAME_ ${PREFIX}jenkins \
-  _NAMESPACE_ ${PREFIX}jenkins \
+  _DNS_NAME_ 'jenkins' \
+  _DNS_DOMAIN_ "$DNS_ZONE_NAME" \
+  _NAMESPACE_ "${PREFIX}jenkins" \
   _LOCATION_ 'westeurope' \
-  _SERVICE_NAME_ ${PREFIX}jenkins \
+  _SERVICE_NAME_ "${PREFIX}jenkins" \
   _SERVICE_PORT_ 8080
 
 # Build and push Jenkins agent POD to ACR registry

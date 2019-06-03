@@ -11,10 +11,10 @@ metadata:
 spec:
   tls:
   - hosts:
-    - _DNS_NAME_._LOCATION_.cloudapp.azure.com
+    - _DNS_NAME_._DNS_DOMAIN_
     secretName: tls-secret
   rules:
-  - host: _DNS_NAME_._LOCATION_.cloudapp.azure.com
+  - host: _DNS_NAME_._DNS_DOMAIN_
     http:
       paths:
       - backend:
