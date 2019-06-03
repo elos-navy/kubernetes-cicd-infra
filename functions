@@ -126,7 +126,7 @@ function enable_routing_part_2 {
   do
     LB_IP=$(kubectl get service -l app=nginx-ingress -n ${INGRESS_NAMESPACE} | grep LoadBalancer | awk '{ print $4 }')
     [ "$LB_IP" != "<pending>" ] && break
-    echo "Waiting for IP of ingress router service.. (#${COUNTER})"
+    echo "Waiting for public IP of ingress router service. (#${COUNTER})"
     let COUNTER=$COUNTER+1
     sleep 10
   done
