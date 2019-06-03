@@ -133,7 +133,7 @@ function enable_routing_part_2 {
 
   # Create wildcard DNS record for ingress traffic.
 
-  DNS_ZONE_NAME=$(az network dns zone list -g "mc_${RESOURCE_GROUP}_${CLUSTER_NAME}_${LOCATION}" | jq '.[] | { name }' | jq '.name')
+  DNS_ZONE_NAME=$(az network dns zone list -g "mc_${RESOURCE_GROUP}_${CLUSTER_NAME}_${LOCATION}" | jq '.[] | { name }' | jq '.name' | sed 's/"//')
 
   az network dns record-set a add-record \
     --resource-group "mc_${RESOURCE_GROUP}_${CLUSTER_NAME}_${LOCATION}" \
