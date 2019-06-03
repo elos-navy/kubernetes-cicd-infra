@@ -30,9 +30,8 @@ done
 
 set -x
 
-#enable_routing_part_1
-#enable_routing_part_2
-exit 0
+enable_routing_part_1
+enable_routing_part_2
 
 # Jenkins Namespace
 create_from_template templates/jenkins-namespace.yaml \
