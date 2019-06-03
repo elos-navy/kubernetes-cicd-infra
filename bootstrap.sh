@@ -25,6 +25,7 @@ do
     --app_dns_domain)
       APP_DNS_DOMAIN="$1"
       shift
+      ;;
     *)
       echo "ERROR: Unknown argument '$KEY' to script '$0'" 1>&2
       exit 1
