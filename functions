@@ -81,7 +81,7 @@ function wait_for_deployment_ready()
 
   while true
   do
-    COUNT=$(kubectl get deployment --no-headers -l $LABEL -n $NAMESPACE | awk '{ print $5 }')
+    COUNT=$(kubectl get deployment --no-headers -l $LABEL -n $NAMESPACE | awk '{ print $4 }')
     [ $COUNT -gt 0 ] && break
     sleep 10
   done
