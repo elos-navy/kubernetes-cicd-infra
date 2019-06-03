@@ -21,4 +21,8 @@ LOCATION='westeurope'
 RESOURCE_GROUP='ls-test-rg'
 SHADOW_RESOURCE_GROUP="MC_${RESOURCE_GROUP}_${CLUSTER_NAME}_${LOCATION}"
 
-
+### Ingress
+INGRESS_NAMESPACE='ingress-system'
+CERT_MANAGER_NAMESPACE='cert-manager'
+INGRESS_DNS_NAME='cicd'
+APP_DNS_DOMAIN='azureapp.com'

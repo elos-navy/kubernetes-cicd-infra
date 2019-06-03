@@ -1,6 +1,7 @@
 #!/bin/bash
 
 source ./config
+source ./functions
 
 kubectl delete namespace ${PREFIX}jenkins
 kubectl delete clusterrolebinding jenkins

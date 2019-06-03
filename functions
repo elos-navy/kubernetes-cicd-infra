@@ -1,0 +1,162 @@
+#!/bin/bash
+
+source ./config
+
+function create_from_template {
+  FILE=$1; shift
+
+  if [ ! -f "$FILE" ]; then
+    echo "ERROR: File '$FILE' doesn't exist!"
+    exit 1
+  fi
+
+  cp $FILE "${TMP_DIR}/$(basename $FILE)"
+
+  while (( "$#" )); do
+    #echo "Replacing parameter: $1 -> $2"
+    sed -i 's@'$1'@'$2'@g' "${TMP_DIR}/$(basename $FILE)"
+    shift
+    shift
+  done
+
+  kubectl create -f "${TMP_DIR}/$(basename $FILE)"
+}
+
+function create_rg {
+  az group create --name $RESOURCE_GROUP --location $LOCATION
+}
+
+function delete_rg {
+  az group delete --name $RESOURCE_GROUP
+}
+
+function create_cluster {
+  az aks create \
+    --resource-group $RESOURCE_GROUP \
+    --name $CLUSTER_NAME \
+    --node-count 2 \
+    --enable-addons http_application_routing \
+    --generate-ssh-keys
+}
+
+function delete_cluster {
+  az aks delete \
+    --resource-group $RESOURCE_GROUP \
+    --name $CLUSTER_NAME
+}
+
+function create_acr {
+  az acr create \
+    --resource-group $RESOURCE_GROUP \
+    --name $REGISTRY_NAME \
+    --admin-enabled true \
+    --sku Standard
+
+  az acr credential show \
+    --name $REGISTRY_NAME
+}
+
+function delete_acr {
+  az acr delete \
+    --resource-group $RESOURCE_GROUP \
+    --name $REGISTRY_NAME
+}
+
+function create_storage_account {
+  az storage account create \
+    --resource-group $SHADOW_RESOURCE_GROUP \
+    --name $STORAGE_ACCOUNT_NAME \
+    --location $LOCATION
+}
+
+function setup_credentials {
+  rm -f ~/.kube/config
+  az aks get-credentials --resource-group $RESOURCE_GROUP --name $CLUSTER_NAME
+}
+
+function wait_for_deployment_ready()
+{
+  NAMESPACE=$1
+  LABEL=$2
+
+  while true
+  do
+    COUNT=$(kubectl get deployment --no-headers -l $LABEL -n $NAMESPACE | awk '{ print $5 }')
+    [ $COUNT -gt 0 ] && break
+    sleep 10
+  done
+}
+
+function install_helm {
+  which helm && return
+
+  #curl -L https://git.io/get_helm.sh | bash
+
+  cd /tmp
+  wget https://storage.googleapis.com/kubernetes-helm/helm-v2.13.0-linux-amd64.tar.gz
+  tar xzf helm-v2.13.0-linux-amd64.tar.gz
+  sudo mv -f linux-amd64/helm /usr/local/bin/
+  sudo mv -f linux-amd64/tiller /usr/local/bin/
+}
+
+function enable_routing_part_1 {
+  install_helm
+
+  # Create service account for tiller part.
+  create_from_template templates/helm/helm-rbac.yaml
+  helm init \
+    --service-account tiller \
+    --node-selectors "beta.kubernetes.io/os"="linux"
+  helm repo update
+
+  # Create namespace and nginx ingress pods.
+  kubectl create namespace $INGRESS_NAMESPACE
+  wait_for_deployment_ready 'kube-system' 'app=helm'
+  helm install stable/nginx-ingress \
+    --namespace $INGRESS_NAMESPACE \
+    --set controller.replicaCount=2 \
+    --set nodeSelector."beta.kubernetes.io/os"=linux
+}
+
+function enable_routing_part_2 {
+  # Wait for public IP address of nginx ingress service
+  LB_IP=''
+  COUNTER=1
+  while true
+  do
+    LB_IP=$(kubectl get service -l app=nginx-ingress -n ${INGRESS_NAMESPACE} | grep LoadBalancer | awk '{ print $4 }')
+    [ "$LB_IP" != "<pending>" ] && break
+    echo "Waiting for IP of ingress router service.. (#${COUNTER})"
+    let COUNTER=$COUNTER+1
+    sleep 10
+  done
+
+  # Create wildcard DNS record for ingress traffic.
+
+  DNS_ZONE_NAME=$(az network dns zone list -g "mc_${RESOURCE_GROUP}_${CLUSTER_NAME}_${LOCATION}" | jq '.[] | { name }' | jq '.name')
+
+  az network dns record-set a add-record \
+    --resource-group "mc_${RESOURCE_GROUP}_${CLUSTER_NAME}_${LOCATION}" \
+    --zone-name $DNS_ZONE_NAME \
+    -n "\*.${INGRESS_DNS_NAME}" \
+    -a $LB_IP
+
+  #PUBLIC_IP_ID=$(az network public-ip list --query "[?ipAddress!=null]|[?contains(ipAddress, '$IP')].[id]" --output tsv)
+  #az network public-ip update --ids $PUBLIC_IP_ID --dns-name $INGRESS_DNS_NAME
+
+  # Install cert-manager.
+  kubectl apply -f https://raw.githubusercontent.com/jetstack/cert-manager/release-0.8/deploy/manifests/00-crds.yaml
+  kubectl create namespace $CERT_MANAGER_NAMESPACE
+  kubectl label namespace  $CERT_MANAGER_NAMESPACE certmanager.k8s.io/disable-validation=true
+  helm repo add jetstack https://charts.jetstack.io
+  helm repo update
+  helm install \
+    --name cert-manager \
+    --namespace $CERT_MANAGER_NAMESPACE \
+    --version v0.8.0 \
+    jetstack/cert-manager
+
+  # CA cluster issuer.
+  create_from_template templates/ingress/cluster-issuer.yaml
+}
+
