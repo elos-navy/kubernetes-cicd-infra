@@ -10,16 +10,28 @@ do
   KEY="$1"
   shift
   case "$KEY" in
+    --registry_name)
+      REGISTRY_NAME="$1"
+      shift
+      ;;
+    --cluster_name)
+      CLUSTER_NAME="$1"
+      shift
+      ;;
+    --location)
+      LOCATION="$1"
+      shift
+      ;;
+    --resource_group)
+      RESOURCE_GROUP="$1"
+      shift
+      ;;
     --jenkins_admin_password)
       JENKINS_ADMIN_PASSWORD="$1"
       shift
       ;;
     --application_git_url)
       APPLICATION_GIT_URL="$1"
-      shift
-      ;;
-    --registry_name)
-      REGISTRY_NAME="$1"
       shift
       ;;
     *)
