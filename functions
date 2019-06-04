@@ -5,6 +5,12 @@ source ./config
 function create_from_template {
   FILE=$1; shift
 
+  # Troubleshooting - podivny problem s nenajdenim sablony.
+  pwd
+  ls -l templates
+  ls -l templates/helm
+  ls -l $FILE
+
   if [ ! -f "$FILE" ]; then
     echo "ERROR: File '$FILE' doesn't exist!"
     exit 1

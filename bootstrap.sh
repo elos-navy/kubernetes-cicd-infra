@@ -43,7 +43,6 @@ done
 set -x
 
 enable_routing_part_1
-enable_routing_part_2
 
 # Jenkins Namespace
 create_from_template templates/jenkins-namespace.yaml \
@@ -90,5 +89,6 @@ kubectl create secret docker-registry $REGISTRY_SECRET_NAME \
     --docker-password=$ACR_PASSWORD \
     --docker-email='ls@elostech.cz'
 
+enable_routing_part_2
 
 rm -rf $TMP_DIR
