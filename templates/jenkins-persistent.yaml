@@ -117,7 +117,6 @@ metadata:
     app: _PREFIX_jenkins
   name: _PREFIX_jenkins
 spec:
-  externalTrafficPolicy: Cluster
   ports:
   - port: 8080
     protocol: TCP
@@ -125,7 +124,7 @@ spec:
   selector:
     app: _PREFIX_jenkins
   sessionAffinity: None
-  type: LoadBalancer
+  type: ClusterIP
 ---
 apiVersion: v1
 kind: Service
