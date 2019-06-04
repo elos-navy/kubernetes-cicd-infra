@@ -23,7 +23,7 @@ SHADOW_RESOURCE_GROUP="MC_${RESOURCE_GROUP}_${CLUSTER_NAME}_${LOCATION}"
 
 ### Ingress
 INGRESS_NAMESPACE='ingress-system'
-CERT_MANAGER_NAMESPACE='cert-manager'
+CERT_MANAGER_NAMESPACE="$INGRESS_NAMESPACE"
 INGRESS_DNS_NAME='cicd'
 
 # This should be filled when setting up routing on AKS. It's retrieved

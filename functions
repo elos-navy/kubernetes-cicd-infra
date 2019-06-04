@@ -149,7 +149,7 @@ function enable_routing_part_2 {
 
   # Install cert-manager.
   kubectl apply -f https://raw.githubusercontent.com/jetstack/cert-manager/release-0.8/deploy/manifests/00-crds.yaml
-  kubectl create namespace $CERT_MANAGER_NAMESPACE
+  kubectl get ns $CERT_MANAGER_NAMESPACE || kubectl create namespace $CERT_MANAGER_NAMESPACE
   kubectl label namespace  $CERT_MANAGER_NAMESPACE certmanager.k8s.io/disable-validation=true
   helm repo add jetstack https://charts.jetstack.io
   helm repo update
@@ -160,6 +160,7 @@ function enable_routing_part_2 {
     jetstack/cert-manager
 
   # CA cluster issuer.
-  create_from_template templates/ingress/cluster-issuer.yaml
+  create_from_template templates/ingress/cluster-issuer.yaml \
+    _CERT_MANAGER_NAMESPACE_ "$CERT_MANAGER_NAMESPACE"
 }
 
