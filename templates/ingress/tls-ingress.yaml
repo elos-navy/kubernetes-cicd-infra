@@ -9,6 +9,10 @@ metadata:
     certmanager.k8s.io/cluster-issuer: letsencrypt-staging
     nginx.ingress.kubernetes.io/rewrite-target: /$1
 spec:
+  tls:
+  - hosts:
+    - _DNS_NAME_
+    secretName: _RESOURCE_NAME_-tls-secret
   rules:
   - host: _DNS_NAME_
     http:
@@ -17,3 +21,22 @@ spec:
           serviceName: _SERVICE_NAME_
           servicePort: _SERVICE_PORT_
         path: /(.*)
+---
+apiVersion: certmanager.k8s.io/v1alpha1
+kind: Certificate
+metadata:
+  name: _RESOURCE_NAME_-tls-secret
+  namespace: _NAMESPACE_
+spec:
+  secretName: tls-secret-staging
+  dnsNames:
+  - _DNS_NAME_
+  acme:
+    config:
+    - http01:
+        ingressClass: nginx
+      domains:
+      - _DNS_NAME_
+  issuerRef:
+    name: letsencrypt-staging
+    kind: ClusterIssuer

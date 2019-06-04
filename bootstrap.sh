@@ -91,17 +91,12 @@ enable_routing_part_2
 
 get_dns_zone_name
 
-create_from_template templates/ingress/ingress.yaml \
-  _NAME_ 'jenkins' \
+create_from_template templates/ingress/tls-ingress.yaml \
+  _RESOURCE_NAME_ 'jenkins' \
   _DNS_NAME_ "jenkins.$DNS_ZONE_NAME" \
   _NAMESPACE_ "${PREFIX}jenkins" \
   _SERVICE_NAME_ "${PREFIX}jenkins" \
   _SERVICE_PORT_ 8080
-
-create_from_template templates/ingress/certificate.yaml \
-  _DNS_NAME_ "jenkins.${DNS_ZONE_NAME}" \
-  _NAMESPACE_ "${PREFIX}jenkins"
-
 
 
 rm -rf $TMP_DIR
