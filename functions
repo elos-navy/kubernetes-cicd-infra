@@ -100,6 +100,10 @@ function install_helm {
   cd -
 }
 
+function get_dns_zone_name {
+  DNS_ZONE_NAME=$(az network dns zone list -g "mc_${RESOURCE_GROUP}_${CLUSTER_NAME}_${LOCATION}" | jq '.[] | { name }' | jq '.name' | sed 's/"//g')
+}
+
 function enable_routing_part_1 {
   install_helm
 
@@ -133,13 +137,11 @@ function enable_routing_part_2 {
   done
 
   # Create wildcard DNS record for ingress traffic.
-
-  DNS_ZONE_NAME=$(az network dns zone list -g "mc_${RESOURCE_GROUP}_${CLUSTER_NAME}_${LOCATION}" | jq '.[] | { name }' | jq '.name' | sed 's/"//g')
-
+  get_dns_zone_name
   az network dns record-set a add-record \
     --resource-group "mc_${RESOURCE_GROUP}_${CLUSTER_NAME}_${LOCATION}" \
     --zone-name $DNS_ZONE_NAME \
-    -n "\*.${INGRESS_DNS_NAME}" \
+    -n '*' \
     -a $LB_IP
 
   #PUBLIC_IP_ID=$(az network public-ip list --query "[?ipAddress!=null]|[?contains(ipAddress, '$IP')].[id]" --output tsv)

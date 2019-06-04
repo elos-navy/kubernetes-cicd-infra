@@ -66,6 +66,7 @@ create_from_template templates/jenkins-persistent.yaml \
   _COMPONENTS_PIPELINE_JOB_NAME_ 'cicd-components-pipeline' \
   _APP_PIPELINE_JOB_NAME_ 'cicd-app-pipeline'
 
+get_dns_zone_name
 create_from_template templates/ingress/ingress.yaml \
   _DNS_NAME_ 'jenkins' \
   _DNS_DOMAIN_ "$DNS_ZONE_NAME" \
