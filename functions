@@ -160,7 +160,10 @@ function enable_routing_part_2 {
     jetstack/cert-manager
 
   # CA cluster issuer.
-  create_from_template templates/ingress/cluster-issuer.yaml
-    #_NAMESPACE_ "$INGRESS_NAMESPACE"
+  # Wait till cluster issuer resource can be created.
+  while true; do
+    kubectl apply -f templates/ingress/cluster-issuer.yaml && break
+    sleep 10
+  done
 }
 
