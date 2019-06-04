@@ -182,8 +182,9 @@ data:
         <script>#!groovy
     
     def source_git_repo      = &apos;https://github.com/elos-tech/kubernetes-cicd-infra.git&apos;
-    def name_prefix          = &apos;_PREFIX_&apos;
+    def name_prefix          = &apos;cicd-&apos;
     def prefix_label         = &apos;PREFIX&apos; // Helper variable for prefix substitution with double sed-ed templates.
+    def dns_domain           = &apos;_DNS_ZONE_NAME_&apos;
     def jenkins_namespace    = &quot;${name_prefix}jenkins&quot;
     def components_namespace = &quot;${name_prefix}components&quot;
     def app_dev_namespace    = &quot;${name_prefix}tasks-dev&quot;
@@ -206,6 +207,13 @@ data:
       
       stage(&apos;Create Nexus&apos;) {
         create_from_template components_namespace, &quot;templates/nexus.yaml _${prefix_label}_ $name_prefix&quot;
+        create_from_template components_namespace, &quot;&quot;&quot;templates/ingress/tls-ingress.yaml \
+          _RESOURCE_NAME_ &quot;${name_prefix}nexus3&quot; \
+          _DNS_NAME_ &quot;nexus.${dns_domain}&quot; \
+          _NAMESPACE_ &quot;${components_namespace}&quot; \
+          _SERVICE_NAME_ &quot;${name_prefix}nexus3&quot; \
+          _SERVICE_PORT_ 8081
+        &quot;&quot;&quot;
         wait_for_deployment_ready(components_namespace, &quot;${name_prefix}nexus3&quot;)
         
         // Initialize Nexus
@@ -237,29 +245,50 @@ data:
         wait_for_deployment_ready(components_namespace, &quot;${name_prefix}sonar-postgres&quot;)
         
         create_from_template components_namespace, &quot;templates/sonarqube.yaml _${prefix_label}_ ${name_prefix}&quot;
+        create_from_template components_namespace, &quot;&quot;&quot;templates/ingress/tls-ingress.yaml \
+          _RESOURCE_NAME_ &quot;${name_prefix}sonarqube&quot; \
+          _DNS_NAME_ &quot;sonarqube.${dns_domain}&quot; \
+          _NAMESPACE_ &quot;${components_namespace}&quot; \
+          _SERVICE_NAME_ &quot;${name_prefix}sonarqube&quot; \
+          _SERVICE_PORT_ 9000
+        &quot;&quot;&quot;
         wait_for_deployment_ready(components_namespace, &quot;${name_prefix}sonarqube&quot;)
       }
       
       stage(&apos;Create DEV namespace&apos;) {
         create_from_template &apos;&apos;, &quot;templates/tasks-dev-namespace.yaml _${prefix_label}_ $name_prefix&quot;
+        create_from_template app_dev_namespace, &quot;&quot;&quot;templates/ingress/tls-ingress.yaml \
+          _RESOURCE_NAME_ &quot;${name_prefix}application-dev&quot; \
+          _DNS_NAME_ &quot;application-dev.${dns_domain}&quot; \
+          _NAMESPACE_ &quot;${app_dev_namespace}&quot; \
+          _SERVICE_NAME_ &quot;${name_prefix}tasks&quot; \
+          _SERVICE_PORT_ 8080
+        &quot;&quot;&quot;
         
         sh &quot;&quot;&quot;
-          kubectl get secret _REGISTRY_SECRET_NAME_ --namespace=${name_prefix}jenkins --export -o yaml |\
+          kubectl get secret acr-secret --namespace=${name_prefix}jenkins --export -o yaml |\
           kubectl apply --namespace=${name_prefix}tasks-dev -f -
         &quot;&quot;&quot;
       }
       
       stage(&apos;Create PROD namespace&apos;) {
         create_from_template &apos;&apos;, &quot;templates/tasks-prod-namespace.yaml _${prefix_label}_ $name_prefix&quot;
+        create_from_template app_prod_namespace, &quot;&quot;&quot;templates/ingress/tls-ingress.yaml \
+          _RESOURCE_NAME_ &quot;${name_prefix}application-prod&quot; \
+          _DNS_NAME_ &quot;application-prod.${dns_domain}&quot; \
+          _NAMESPACE_ &quot;${app_prod_namespace}&quot; \
+          _SERVICE_NAME_ &quot;${name_prefix}tasks&quot; \
+          _SERVICE_PORT_ 8080
+        &quot;&quot;&quot;
         
         sh &quot;&quot;&quot;
-          kubectl get secret _REGISTRY_SECRET_NAME_ --namespace=${name_prefix}jenkins --export -o yaml |\
+          kubectl get secret acr-secret --namespace=${name_prefix}jenkins --export -o yaml |\
           kubectl apply --namespace=${name_prefix}tasks-prod -f -
         &quot;&quot;&quot;
       }
       
       stage(&apos;Start Application Pipeline&apos;) {
-        build job: &quot;_APP_PIPELINE_JOB_NAME_&quot;, wait: false
+        build job: &quot;cicd-app-pipeline&quot;, wait: false
       }
     }
     

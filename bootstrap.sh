@@ -46,7 +46,7 @@ set -x
 # with public IP address. IP address can be assigned after few minutes, so do the rest
 # of routing setup after other things (jenkins bootstrap, docker images builds) are done.
 enable_routing_part_1
-
+get_dns_zone_name
 
 # Storage Class (Azure File for ReadWriteMany PV types)
 #create_from_template templates/azure-file-storage-class.yaml \
@@ -68,7 +68,8 @@ create_from_template templates/jenkins-persistent.yaml \
   _REGISTRY_NAME_ "$REGISTRY_NAME" \
   _REGISTRY_SECRET_NAME_ "$REGISTRY_SECRET_NAME" \
   _COMPONENTS_PIPELINE_JOB_NAME_ 'cicd-components-pipeline' \
-  _APP_PIPELINE_JOB_NAME_ 'cicd-app-pipeline'
+  _APP_PIPELINE_JOB_NAME_ 'cicd-app-pipeline' \
+  _DNS_ZONE_NAME_ "$DNS_ZONE_NAME"
 
 
 # Build and push Jenkins agent POD to ACR registry
@@ -87,9 +88,6 @@ kubectl create secret docker-registry $REGISTRY_SECRET_NAME \
     --docker-email='ls@elostech.cz'
 
 enable_routing_part_2
-
-
-get_dns_zone_name
 
 create_from_template templates/ingress/tls-ingress.yaml \
   _RESOURCE_NAME_ 'jenkins' \
