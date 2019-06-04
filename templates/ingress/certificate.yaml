@@ -1,0 +1,18 @@
+apiVersion: certmanager.k8s.io/v1alpha1
+kind: Certificate
+metadata:
+  name: tls-secret
+  namespace: _NAMESPACE_
+spec:
+  secretName: tls-secret-staging
+  dnsNames:
+  - _DNS_NAME_
+  acme:
+    config:
+    - http01:
+        ingressClass: nginx
+      domains:
+      - _DNS_NAME_
+  issuerRef:
+    name: letsencrypt-staging
+    kind: ClusterIssuer

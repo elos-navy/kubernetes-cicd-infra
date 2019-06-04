@@ -2,7 +2,7 @@
 apiVersion: extensions/v1beta1
 kind: Ingress
 metadata:
-  name: _DNS_NAME_
+  name: _NAME_
   namespace: _NAMESPACE_
   annotations:
     kubernetes.io/ingress.class: nginx
@@ -11,10 +11,10 @@ metadata:
 spec:
   tls:
   - hosts:
-    - _DNS_NAME_._DNS_DOMAIN_
+    - _DNS_NAME_
     secretName: tls-secret
   rules:
-  - host: _DNS_NAME_._DNS_DOMAIN_
+  - host: _DNS_NAME_
     http:
       paths:
       - backend:

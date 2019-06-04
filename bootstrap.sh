@@ -42,18 +42,22 @@ done
 
 set -x
 
+# Install and create nginx ingress controller. This creates LoadBalancer service
+# with public IP address. IP address can be assigned after few minutes, so do the rest
+# of routing setup after other things (jenkins bootstrap, docker images builds) are done.
 enable_routing_part_1
-
-# Jenkins Namespace
-create_from_template templates/jenkins-namespace.yaml \
-  _PREFIX_ $PREFIX
-kubectl config set-context $(kubectl config current-context) --namespace=${PREFIX}jenkins
 
 
 # Storage Class (Azure File for ReadWriteMany PV types)
 #create_from_template templates/azure-file-storage-class.yaml \
 #  _PREFIX_ $PREFIX \
 #  _STORAGE_ACCOUNT_ $STORAGE_ACCOUNT_NAME
+
+
+# Jenkins Namespace
+create_from_template templates/jenkins-namespace.yaml \
+  _PREFIX_ $PREFIX
+kubectl config set-context $(kubectl config current-context) --namespace=${PREFIX}jenkins
 
 
 # Jenkins
@@ -66,14 +70,6 @@ create_from_template templates/jenkins-persistent.yaml \
   _COMPONENTS_PIPELINE_JOB_NAME_ 'cicd-components-pipeline' \
   _APP_PIPELINE_JOB_NAME_ 'cicd-app-pipeline'
 
-get_dns_zone_name
-create_from_template templates/ingress/ingress.yaml \
-  _DNS_NAME_ 'jenkins' \
-  _DNS_DOMAIN_ "$DNS_ZONE_NAME" \
-  _NAMESPACE_ "${PREFIX}jenkins" \
-  _LOCATION_ 'westeurope' \
-  _SERVICE_NAME_ "${PREFIX}jenkins" \
-  _SERVICE_PORT_ 8080
 
 # Build and push Jenkins agent POD to ACR registry
 az acr build -t ${PREFIX}jenkins/jenkins-agent-appdev:latest -r $REGISTRY_NAME artefacts/
@@ -91,5 +87,21 @@ kubectl create secret docker-registry $REGISTRY_SECRET_NAME \
     --docker-email='ls@elostech.cz'
 
 enable_routing_part_2
+
+
+get_dns_zone_name
+
+create_from_template templates/ingress/ingress.yaml \
+  _NAME_ 'jenkins' \
+  _DNS_NAME_ "jenkins.$DNS_ZONE_NAME" \
+  _NAMESPACE_ "${PREFIX}jenkins" \
+  _SERVICE_NAME_ "${PREFIX}jenkins" \
+  _SERVICE_PORT_ 8080
+
+create_from_template templates/ingress/certificate.yaml \
+  _DNS_NAME_ "jenkins.${DNS_ZONE_NAME}" \
+  _NAMESPACE_ "${PREFIX}jenkins"
+
+
 
 rm -rf $TMP_DIR
