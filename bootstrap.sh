@@ -42,6 +42,19 @@ done
 
 set -x
 
+az aks enable-addons \
+  --resource-group $RESOURCE_GROUP \
+  --name $CLUSTER_NAME \
+  --addons http_application_routing
+
+az aks show \
+  --resource-group $RESOURCE_GROUP \
+  --name $CLUSTER_NAME \
+  --query addonProfiles.httpApplicationRouting.config.HTTPApplicationRoutingZoneName \
+  -o table
+
+exit 0
+
 # Install and create nginx ingress controller. This creates LoadBalancer service
 # with public IP address. IP address can be assigned after few minutes, so do the rest
 # of routing setup after other things (jenkins bootstrap, docker images builds) are done.
